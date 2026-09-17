@@ -77,21 +77,21 @@ if (platform === 'linux') {
 }
 
 const packageMap = {
-  'darwin-x64': '@cometix/ccline-darwin-x64',
-  'darwin-arm64': '@cometix/ccline-darwin-arm64',
-  'linux-x64': '@cometix/ccline-linux-x64',
-  'linux-x64-musl': '@cometix/ccline-linux-x64-musl',
-  'linux-arm64': '@cometix/ccline-linux-arm64',
-  'linux-arm64-musl': '@cometix/ccline-linux-arm64-musl',
-  'win32-x64': '@cometix/ccline-win32-x64',
-  'win32-ia32': '@cometix/ccline-win32-x64', // Use 64-bit for 32-bit systems
+  'darwin-x64': '@yatotm/ccline-darwin-x64',
+  'darwin-arm64': '@yatotm/ccline-darwin-arm64',
+  'linux-x64': '@yatotm/ccline-linux-x64',
+  'linux-x64-musl': '@yatotm/ccline-linux-x64-musl',
+  'linux-arm64': '@yatotm/ccline-linux-arm64',
+  'linux-arm64-musl': '@yatotm/ccline-linux-arm64-musl',
+  'win32-x64': '@yatotm/ccline-win32-x64',
+  'win32-ia32': '@yatotm/ccline-win32-x64', // Use 64-bit for 32-bit systems
 };
 
 const packageName = packageMap[platformKey];
 if (!packageName) {
   console.error(`Error: Unsupported platform ${platformKey}`);
   console.error('Supported platforms: darwin (x64/arm64), linux (x64/arm64), win32 (x64)');
-  console.error('Please visit https://github.com/Haleclipse/CCometixLine for manual installation');
+  console.error('Please visit https://github.com/yatotm/CCometixLine for manual installation');
   process.exit(1);
 }
 
@@ -101,7 +101,7 @@ const binaryPath = path.join(__dirname, '..', 'node_modules', packageName, binar
 if (!fs.existsSync(binaryPath)) {
   console.error(`Error: Binary not found at ${binaryPath}`);
   console.error('This might indicate a failed installation or unsupported platform.');
-  console.error('Please try reinstalling: npm install -g @cometix/ccline');
+  console.error('Please try reinstalling: npm install -g @yatotm/ccline');
   console.error(`Expected package: ${packageName}`);
   process.exit(1);
 }

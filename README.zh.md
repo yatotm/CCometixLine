@@ -7,6 +7,13 @@
 ![Language:Rust](https://img.shields.io/static/v1?label=Language&message=Rust&color=orange&style=flat-square)
 ![License:MIT](https://img.shields.io/static/v1?label=License&message=MIT&color=blue&style=flat-square)
 
+> **Fork 说明** — 本仓库是 [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine)（基于 v1.1.2）的维护分支，npm 包名为 `@yatotm/ccline`。相对上游的改动：
+> - **用量段** 同时显示七天和五小时用量（`7d% 5h%`）。
+> - **上下文窗口** 优先使用 Claude Code（≥ 2.0.37）在 statusline JSON 中报告的 `context_window.context_window_size`，因此新版 CLI 下不带 `[1m]` 后缀也能正确识别 1M 上下文；老版本 CLI 沿用后缀判断逻辑。Fable/Mythos 默认 1M。
+> - **Windows 图标**：渲染时把 BMP 之外的 Nerd Font 图标（Material Design 区）替换为 BMP 内等价图标，修复显示为 `?` 的问题。
+> - **默认配置** 为 `cometix` 主题且所有段落启用。
+> - 兼容 `model` 字段为纯字符串的输入（上游 #118 在新版 Claude Code 下崩溃）。
+
 ## 截图
 
 ![CCometixLine](assets/img1.png)
@@ -43,18 +50,18 @@
 
 ```bash
 # 全局安装
-npm install -g @cometix/ccline
+npm install -g @yatotm/ccline
 
 # 或使用 yarn
-yarn global add @cometix/ccline
+yarn global add @yatotm/ccline
 
 # 或使用 pnpm
-pnpm add -g @cometix/ccline
+pnpm add -g @yatotm/ccline
 ```
 
 使用镜像源加速下载：
 ```bash
-npm install -g @cometix/ccline --registry https://registry.npmmirror.com
+npm install -g @yatotm/ccline --registry https://registry.npmmirror.com
 ```
 
 安装后：
@@ -96,20 +103,20 @@ npm install -g @cometix/ccline --registry https://registry.npmmirror.com
 ### 更新
 
 ```bash
-npm update -g @cometix/ccline
+npm update -g @yatotm/ccline
 ```
 
 <details>
 <summary>手动安装（点击展开）</summary>
 
-或者从 [Releases](https://github.com/Haleclipse/CCometixLine/releases) 手动下载：
+或者从 [Releases](https://github.com/yatotm/CCometixLine/releases) 手动下载：
 
 #### Linux
 
 #### 选项 1: 动态链接版本（推荐）
 ```bash
 mkdir -p ~/.claude/ccline
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-linux-x64.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-linux-x64.tar.gz
 tar -xzf ccline-linux-x64.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -119,7 +126,7 @@ chmod +x ~/.claude/ccline/ccline
 #### 选项 2: 静态链接版本（通用兼容）
 ```bash
 mkdir -p ~/.claude/ccline
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-linux-x64-static.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-linux-x64-static.tar.gz
 tar -xzf ccline-linux-x64-static.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -130,7 +137,7 @@ chmod +x ~/.claude/ccline/ccline
 
 ```bash  
 mkdir -p ~/.claude/ccline
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-macos-x64.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-macos-x64.tar.gz
 tar -xzf ccline-macos-x64.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -140,7 +147,7 @@ chmod +x ~/.claude/ccline/ccline
 
 ```bash
 mkdir -p ~/.claude/ccline  
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-macos-arm64.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-macos-arm64.tar.gz
 tar -xzf ccline-macos-arm64.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -151,7 +158,7 @@ chmod +x ~/.claude/ccline/ccline
 ```powershell
 # 创建目录并下载
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\ccline"
-Invoke-WebRequest -Uri "https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-windows-x64.zip" -OutFile "ccline-windows-x64.zip"
+Invoke-WebRequest -Uri "https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-windows-x64.zip" -OutFile "ccline-windows-x64.zip"
 Expand-Archive -Path "ccline-windows-x64.zip" -DestinationPath "."
 Move-Item "ccline.exe" "$env:USERPROFILE\.claude\ccline\"
 ```
@@ -161,7 +168,7 @@ Move-Item "ccline.exe" "$env:USERPROFILE\.claude\ccline\"
 ### 从源码构建
 
 ```bash
-git clone https://github.com/Haleclipse/CCometixLine.git
+git clone https://github.com/yatotm/CCometixLine.git
 cd CCometixLine
 cargo build --release
 cp target/release/ccometixline ~/.claude/ccline/ccline
@@ -195,7 +202,8 @@ ccline --patch ~/.local/share/fnm/node-versions/v24.4.1/installation/lib/node_mo
 
 ## 默认段落
 
-显示：`目录 | Git 分支状态 | 模型 | 上下文窗口`
+首次安装默认使用 `cometix` 主题（Nerd Font 图标）并启用全部段落：
+`模型 | 目录 | Git | 上下文窗口 | 用量 | 花费 | 会话 | 输出风格`
 
 ### Git 状态指示器
 
@@ -301,4 +309,4 @@ cargo build --release
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Haleclipse/CCometixLine&type=Date)](https://star-history.com/#Haleclipse/CCometixLine&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=yatotm/CCometixLine&type=Date)](https://star-history.com/#yatotm/CCometixLine&Date)

@@ -7,6 +7,13 @@ A high-performance Claude Code statusline tool written in Rust with Git integrat
 ![Language:Rust](https://img.shields.io/static/v1?label=Language&message=Rust&color=orange&style=flat-square)
 ![License:MIT](https://img.shields.io/static/v1?label=License&message=MIT&color=blue&style=flat-square)
 
+> **Fork notice** — this is a maintained fork of [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine) (based on v1.1.2), published to npm as `@yatotm/ccline`. Changes on top of upstream:
+> - **Usage segment** shows both 7-day and 5-hour utilization (`7d% 5h%`).
+> - **Context window** uses the `context_window.context_window_size` that Claude Code (≥ 2.0.37) reports, so models running with 1M context are detected even without the `[1m]` suffix; older CLIs keep the suffix-based logic. Fable/Mythos default to 1M.
+> - **Windows icons**: Nerd Font glyphs outside the BMP (Material Design set) are swapped for BMP equivalents at render time, fixing icons that showed as `?`.
+> - **Default config** is the `cometix` theme with every segment enabled.
+> - Accepts `model` as a bare string (upstream #118 crash on newer Claude Code).
+
 ## Screenshots
 
 ![CCometixLine](assets/img1.png)
@@ -43,18 +50,18 @@ Install via npm (works on all platforms):
 
 ```bash
 # Install globally
-npm install -g @cometix/ccline
+npm install -g @yatotm/ccline
 
 # Or using yarn
-yarn global add @cometix/ccline
+yarn global add @yatotm/ccline
 
 # Or using pnpm
-pnpm add -g @cometix/ccline
+pnpm add -g @yatotm/ccline
 ```
 
 Use npm mirror for faster download:
 ```bash
-npm install -g @cometix/ccline --registry https://registry.npmmirror.com
+npm install -g @yatotm/ccline --registry https://registry.npmmirror.com
 ```
 
 After installation:
@@ -96,20 +103,20 @@ Add to your Claude Code `settings.json`:
 ### Update
 
 ```bash
-npm update -g @cometix/ccline
+npm update -g @yatotm/ccline
 ```
 
 <details>
 <summary>Manual Installation (Click to expand)</summary>
 
-Alternatively, download from [Releases](https://github.com/Haleclipse/CCometixLine/releases):
+Alternatively, download from [Releases](https://github.com/yatotm/CCometixLine/releases):
 
 #### Linux
 
 #### Option 1: Dynamic Binary (Recommended)
 ```bash
 mkdir -p ~/.claude/ccline
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-linux-x64.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-linux-x64.tar.gz
 tar -xzf ccline-linux-x64.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -119,7 +126,7 @@ chmod +x ~/.claude/ccline/ccline
 #### Option 2: Static Binary (Universal Compatibility)
 ```bash
 mkdir -p ~/.claude/ccline
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-linux-x64-static.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-linux-x64-static.tar.gz
 tar -xzf ccline-linux-x64-static.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -130,7 +137,7 @@ chmod +x ~/.claude/ccline/ccline
 
 ```bash  
 mkdir -p ~/.claude/ccline
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-macos-x64.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-macos-x64.tar.gz
 tar -xzf ccline-macos-x64.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -140,7 +147,7 @@ chmod +x ~/.claude/ccline/ccline
 
 ```bash
 mkdir -p ~/.claude/ccline  
-wget https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-macos-arm64.tar.gz
+wget https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-macos-arm64.tar.gz
 tar -xzf ccline-macos-arm64.tar.gz
 cp ccline ~/.claude/ccline/
 chmod +x ~/.claude/ccline/ccline
@@ -151,7 +158,7 @@ chmod +x ~/.claude/ccline/ccline
 ```powershell
 # Create directory and download
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\ccline"
-Invoke-WebRequest -Uri "https://github.com/Haleclipse/CCometixLine/releases/latest/download/ccline-windows-x64.zip" -OutFile "ccline-windows-x64.zip"
+Invoke-WebRequest -Uri "https://github.com/yatotm/CCometixLine/releases/latest/download/ccline-windows-x64.zip" -OutFile "ccline-windows-x64.zip"
 Expand-Archive -Path "ccline-windows-x64.zip" -DestinationPath "."
 Move-Item "ccline.exe" "$env:USERPROFILE\.claude\ccline\"
 ```
@@ -161,7 +168,7 @@ Move-Item "ccline.exe" "$env:USERPROFILE\.claude\ccline\"
 ### Build from Source
 
 ```bash
-git clone https://github.com/Haleclipse/CCometixLine.git
+git clone https://github.com/yatotm/CCometixLine.git
 cd CCometixLine
 cargo build --release
 
@@ -203,7 +210,8 @@ ccline --patch ~/.local/share/fnm/node-versions/v24.4.1/installation/lib/node_mo
 
 ## Default Segments
 
-Displays: `Directory | Git Branch Status | Model | Context Window`
+Fresh installs use the `cometix` theme (Nerd Font icons) with every segment enabled:
+`Model | Directory | Git | Context Window | Usage | Cost | Session | Output Style`
 
 ### Git Status Indicators
 
@@ -312,4 +320,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Haleclipse/CCometixLine&type=Date)](https://star-history.com/#Haleclipse/CCometixLine&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=yatotm/CCometixLine&type=Date)](https://star-history.com/#yatotm/CCometixLine&Date)
