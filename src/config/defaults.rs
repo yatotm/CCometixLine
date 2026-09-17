@@ -5,7 +5,7 @@ use super::types::Config;
 
 impl Default for Config {
     fn default() -> Self {
-        // Use the theme presets as the source of truth
-        crate::ui::themes::ThemePresets::get_default()
+        // Fresh installs start on the cometix theme with every segment enabled
+        crate::ui::themes::ThemePresets::get_cometix()
     }
 }

@@ -82,7 +82,7 @@ pub fn context_window_segment() -> SegmentConfig {
 pub fn cost_segment() -> SegmentConfig {
     SegmentConfig {
         id: SegmentId::Cost,
-        enabled: false,
+        enabled: true,
         icon: IconConfig {
             plain: "💰".to_string(),
             nerd_font: "\u{eec1}".to_string(),
@@ -100,7 +100,7 @@ pub fn cost_segment() -> SegmentConfig {
 pub fn session_segment() -> SegmentConfig {
     SegmentConfig {
         id: SegmentId::Session,
-        enabled: false,
+        enabled: true,
         icon: IconConfig {
             plain: "⏱️".to_string(),
             nerd_font: "\u{f19bb}".to_string(),
@@ -118,7 +118,7 @@ pub fn session_segment() -> SegmentConfig {
 pub fn output_style_segment() -> SegmentConfig {
     SegmentConfig {
         id: SegmentId::OutputStyle,
-        enabled: false,
+        enabled: true,
         icon: IconConfig {
             plain: "🎯".to_string(),
             nerd_font: "\u{f12f5}".to_string(),
@@ -136,7 +136,7 @@ pub fn output_style_segment() -> SegmentConfig {
 pub fn usage_segment() -> SegmentConfig {
     SegmentConfig {
         id: SegmentId::Usage,
-        enabled: false,
+        enabled: true,
         icon: IconConfig {
             plain: "📊".to_string(),
             nerd_font: "\u{f0a9e}".to_string(),
