@@ -51,7 +51,7 @@ const PLAIN_FALLBACKS: &[(char, char)] = &[
     ('\u{f0aa4}', '◕'), // circle_slice_7
     ('\u{f0aa5}', '●'), // circle_slice_8
     ('\u{f06b0}', '↑'), // update available
-    ('\u{e0b0}', '▶'), // powerline separator
+    ('\u{e0b0}', '▶'),  // powerline separator
 ];
 
 /// Used for PUA glyphs without a dedicated plain mapping.
@@ -97,12 +97,16 @@ fn replace_chars<'a>(
 /// Replace supplementary-PUA icons with BMP Nerd Font glyphs.
 /// Emoji, BMP icons and regular text are untouched.
 pub fn to_bmp(text: &str) -> Cow<'_, str> {
-    replace_chars(text, is_supplementary_pua, |c| lookup(BMP_FALLBACKS, c, GENERIC_BMP_FALLBACK))
+    replace_chars(text, is_supplementary_pua, |c| {
+        lookup(BMP_FALLBACKS, c, GENERIC_BMP_FALLBACK)
+    })
 }
 
 /// Replace every Nerd Font (PUA) glyph with a plain Unicode symbol.
 pub fn to_plain(text: &str) -> Cow<'_, str> {
-    replace_chars(text, is_pua, |c| lookup(PLAIN_FALLBACKS, c, GENERIC_PLAIN_FALLBACK))
+    replace_chars(text, is_pua, |c| {
+        lookup(PLAIN_FALLBACKS, c, GENERIC_PLAIN_FALLBACK)
+    })
 }
 
 /// Whether Nerd Font glyphs can be rendered in this environment (cached per process).

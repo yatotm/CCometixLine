@@ -20,7 +20,10 @@ pub const FONT_FACE_LIST: &str = "Cascadia Mono, Symbols Nerd Font Mono";
 /// Built-in Windows Terminal profiles (stable GUIDs) that receive the fallback font.
 const TERMINAL_PROFILES: &[(&str, &str)] = &[
     ("Command Prompt", "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}"),
-    ("Windows PowerShell", "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}"),
+    (
+        "Windows PowerShell",
+        "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+    ),
     ("PowerShell", "{574e775e-4f2a-5b96-ac1e-a2962a402336}"),
 ];
 
@@ -122,8 +125,14 @@ mod windows {
         println!();
         println!("Restart Windows Terminal to load \"{}\".", FONT_FAMILY);
         println!("Command Prompt / PowerShell profiles now use it as a fallback font (WT 1.20+).");
-        println!("Other terminals: set the font face to \"{}\".", FONT_FACE_LIST);
-        println!("Undo: delete the files above and remove \"{}\" from", registry_value_name());
+        println!(
+            "Other terminals: set the font face to \"{}\".",
+            FONT_FACE_LIST
+        );
+        println!(
+            "Undo: delete the files above and remove \"{}\" from",
+            registry_value_name()
+        );
         println!("{}", FONTS_REGISTRY_KEY);
         Ok(())
     }
