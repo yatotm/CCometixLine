@@ -38,6 +38,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    if cli.install_font {
+        if let Err(err) = ccometixline::utils::font_installer::install() {
+            eprintln!("❌ {}", err);
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
+
     // Load configuration
     let mut config = Config::load().unwrap_or_else(|_| Config::default());
 

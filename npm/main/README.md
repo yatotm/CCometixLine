@@ -27,6 +27,8 @@ ccline --help
 ccline --version
 ```
 
+Windows without a Nerd Font shows emoji icons; run `ccline --install-font` once to install the bundled Nerd Font symbols for Windows Terminal.
+
 ## For Users in China
 
 Use npm mirror for faster installation:

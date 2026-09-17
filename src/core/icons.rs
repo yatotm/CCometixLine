@@ -51,7 +51,7 @@ const PLAIN_FALLBACKS: &[(char, char)] = &[
     ('\u{f0aa4}', '◕'), // circle_slice_7
     ('\u{f0aa5}', '●'), // circle_slice_8
     ('\u{f06b0}', '↑'), // update available
-    ('\u{e0b0}', '▶'),  // powerline separator
+    ('\u{e0b0}', '▶'), // powerline separator
 ];
 
 /// Used for PUA glyphs without a dedicated plain mapping.
@@ -97,26 +97,26 @@ fn replace_chars<'a>(
 /// Replace supplementary-PUA icons with BMP Nerd Font glyphs.
 /// Emoji, BMP icons and regular text are untouched.
 pub fn to_bmp(text: &str) -> Cow<'_, str> {
-    replace_chars(text, is_supplementary_pua, |c| {
-        lookup(BMP_FALLBACKS, c, GENERIC_BMP_FALLBACK)
-    })
+    replace_chars(text, is_supplementary_pua, |c| lookup(BMP_FALLBACKS, c, GENERIC_BMP_FALLBACK))
 }
 
 /// Replace every Nerd Font (PUA) glyph with a plain Unicode symbol.
 pub fn to_plain(text: &str) -> Cow<'_, str> {
-    replace_chars(text, is_pua, |c| {
-        lookup(PLAIN_FALLBACKS, c, GENERIC_PLAIN_FALLBACK)
-    })
+    replace_chars(text, is_pua, |c| lookup(PLAIN_FALLBACKS, c, GENERIC_PLAIN_FALLBACK))
 }
 
 /// Whether Nerd Font glyphs can be rendered in this environment (cached per process).
 pub fn nerd_font_usable() -> bool {
     static USABLE: OnceLock<bool> = OnceLock::new();
-    *USABLE.get_or_init(|| {
-        env_override(std::env::var(ENV_OVERRIDE).ok().as_deref()).unwrap_or_else(|| {
-            !cfg!(windows) || windows_font_dirs().iter().any(|dir| dir_has_nerd_font(dir))
-        })
-    })
+    *USABLE.get_or_init(detect_nerd_font)
+}
+
+fn detect_nerd_font() -> bool {
+    let forced = std::env::var(ENV_OVERRIDE).ok();
+    if let Some(usable) = env_override(forced.as_deref()) {
+        return usable;
+    }
+    !cfg!(windows) || windows_font_dirs().iter().any(|dir| dir_has_nerd_font(dir))
 }
 
 fn env_override(value: Option<&str>) -> Option<bool> {
@@ -288,7 +288,13 @@ mod tests {
         ] {
             assert!(is_nerd_font_file(name), "{name}");
         }
-        for name in ["consola.ttf", "CascadiaMono.ttf", "segoeui.ttf", "Arial.ttf", ""] {
+        for name in [
+            "consola.ttf",
+            "CascadiaMono.ttf",
+            "segoeui.ttf",
+            "Arial.ttf",
+            "",
+        ] {
             assert!(!is_nerd_font_file(name), "{name}");
         }
     }
@@ -315,10 +321,11 @@ mod tests {
             return;
         }
         let icon = "\u{f024b}";
+        let safe = platform_safe(icon);
         if cfg!(windows) {
-            assert!(platform_safe(icon) == "\u{f07b}" || platform_safe(icon) == "•");
+            assert!(safe == "\u{f07b}" || safe == "•");
         } else {
-            assert_eq!(platform_safe(icon), icon);
+            assert_eq!(safe, icon);
         }
     }
 }

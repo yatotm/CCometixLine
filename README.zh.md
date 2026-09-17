@@ -10,7 +10,7 @@
 > **Fork 说明** — 本仓库是 [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine)（基于 v1.1.2）的维护分支，npm 包名为 `@yatotm/ccline`。相对上游的改动：
 > - **用量段** 同时显示七天和五小时用量（`7d% 5h%`）。
 > - **上下文窗口** 优先使用 Claude Code（≥ 2.0.37）在 statusline JSON 中报告的 `context_window.context_window_size`，因此新版 CLI 下不带 `[1m]` 后缀也能正确识别 1M 上下文；老版本 CLI 沿用后缀判断逻辑。Fable/Mythos 默认 1M。
-> - **Windows 图标**：使用系统自带字体（未安装 Nerd Font）的 cmd/PowerShell 下，图标自动退回主题的 emoji 版本而不是显示 `?`；已安装 Nerd Font 时，把 BMP 之外的 Material Design 图标替换为 BMP 内等价图标。可用 `CCLINE_NERD_FONT=1` / `0` 强制指定。
+> - **Windows 图标**：使用系统自带字体（未安装 Nerd Font）的 cmd/PowerShell 下，图标自动退回主题的 emoji 版本而不是显示 `?`；已安装 Nerd Font 时，把 BMP 之外的 Material Design 图标替换为 BMP 内等价图标。可用 `CCLINE_NERD_FONT=1` / `0` 强制指定；`ccline --install-font` 可为 Windows Terminal 安装内置的 Nerd Font 符号字体。
 > - **默认配置** 为 `cometix` 主题且所有段落启用。
 > - 兼容 `model` 字段为纯字符串的输入（上游 #118 在新版 Claude Code 下崩溃）。
 
@@ -99,6 +99,16 @@ npm install -g @yatotm/ccline --registry https://registry.npmmirror.com
 }
 ```
 *如果 npm 全局安装已在 PATH 中可用，则使用此配置*
+
+### Windows：显示真正的 Nerd Font 图标（可选）
+
+Windows 自带字体里没有 Nerd Font 字形，所以 ccline 在 Windows 上默认显示 emoji 图标。想在 Windows Terminal（Win11 下 cmd/PowerShell 的默认宿主）里看到原版图标，执行一次：
+
+```powershell
+ccline --install-font
+```
+
+它会把内置的 [Symbols Nerd Font Mono](https://github.com/ryanoasis/nerd-fonts)（MIT，见 `assets/fonts/`）安装到当前用户（无需管理员），并通过 Windows Terminal fragment 给 Command Prompt / PowerShell 配置加上该字体作为回退（需要 Windows Terminal 1.20+）。重启 Windows Terminal 后 ccline 会自动切换到 Nerd Font 图标。其他终端或 profile 请手动把字体设为 `Cascadia Mono, Symbols Nerd Font Mono`。
 
 ### 更新
 

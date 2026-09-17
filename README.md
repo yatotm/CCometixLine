@@ -10,7 +10,7 @@ A high-performance Claude Code statusline tool written in Rust with Git integrat
 > **Fork notice** — this is a maintained fork of [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine) (based on v1.1.2), published to npm as `@yatotm/ccline`. Changes on top of upstream:
 > - **Usage segment** shows both 7-day and 5-hour utilization (`7d% 5h%`).
 > - **Context window** uses the `context_window.context_window_size` that Claude Code (≥ 2.0.37) reports, so models running with 1M context are detected even without the `[1m]` suffix; older CLIs keep the suffix-based logic. Fable/Mythos default to 1M.
-> - **Windows icons**: with the stock cmd/PowerShell fonts (no Nerd Font installed) icons fall back to the theme's emoji variants instead of showing `?`; with a Nerd Font installed, Material Design glyphs outside the BMP are swapped for BMP equivalents. Override detection with `CCLINE_NERD_FONT=1` / `0`.
+> - **Windows icons**: with the stock cmd/PowerShell fonts (no Nerd Font installed) icons fall back to the theme's emoji variants instead of showing `?`; with a Nerd Font installed, Material Design glyphs outside the BMP are swapped for BMP equivalents. Override detection with `CCLINE_NERD_FONT=1` / `0`. `ccline --install-font` installs a bundled Nerd Font symbols font for Windows Terminal.
 > - **Default config** is the `cometix` theme with every segment enabled.
 > - Accepts `model` as a bare string (upstream #118 crash on newer Claude Code).
 
@@ -99,6 +99,16 @@ Add to your Claude Code `settings.json`:
 }
 ```
 *Use this if npm global installation is available in PATH*
+
+### Windows: real Nerd Font icons (optional)
+
+Stock Windows has no font with Nerd Font glyphs, so ccline shows emoji icons there by default. To get the real icons in Windows Terminal (Windows 11's default host for cmd/PowerShell), run once:
+
+```powershell
+ccline --install-font
+```
+
+This installs the bundled [Symbols Nerd Font Mono](https://github.com/ryanoasis/nerd-fonts) (MIT, see `assets/fonts/`) for the current user — no admin rights — and adds it as a fallback font to the Command Prompt / PowerShell profiles through a Windows Terminal fragment (Windows Terminal 1.20+). Restart Windows Terminal afterwards; ccline switches to Nerd Font icons automatically. For other terminals or profiles, set the font face to `Cascadia Mono, Symbols Nerd Font Mono` yourself.
 
 ### Update
 
@@ -283,7 +293,7 @@ context_limit = 1000000
 - **Terminal**: Must support Nerd Fonts for proper icon display
   - Install a [Nerd Font](https://www.nerdfonts.com/) (e.g., FiraCode Nerd Font, JetBrains Mono Nerd Font)
   - Configure your terminal to use the Nerd Font
-  - Windows without a Nerd Font: icons automatically fall back to emoji (`CCLINE_NERD_FONT=1` forces Nerd Font icons if yours isn't detected)
+  - Windows without a Nerd Font: icons automatically fall back to emoji; run `ccline --install-font` for real icons in Windows Terminal (`CCLINE_NERD_FONT=1` forces Nerd Font icons if yours isn't detected)
 - **Claude Code**: For statusline integration
 
 ## Development
