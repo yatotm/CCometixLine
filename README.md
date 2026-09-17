@@ -10,7 +10,7 @@ A high-performance Claude Code statusline tool written in Rust with Git integrat
 > **Fork notice** — this is a maintained fork of [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine) (based on v1.1.2), published to npm as `@yatotm/ccline`. Changes on top of upstream:
 > - **Usage segment** shows both 7-day and 5-hour utilization (`7d% 5h%`).
 > - **Context window** uses the `context_window.context_window_size` that Claude Code (≥ 2.0.37) reports, so models running with 1M context are detected even without the `[1m]` suffix; older CLIs keep the suffix-based logic. Fable/Mythos default to 1M.
-> - **Windows icons**: Nerd Font glyphs outside the BMP (Material Design set) are swapped for BMP equivalents at render time, fixing icons that showed as `?`.
+> - **Windows icons**: with the stock cmd/PowerShell fonts (no Nerd Font installed) icons fall back to the theme's emoji variants instead of showing `?`; with a Nerd Font installed, Material Design glyphs outside the BMP are swapped for BMP equivalents. Override detection with `CCLINE_NERD_FONT=1` / `0`.
 > - **Default config** is the `cometix` theme with every segment enabled.
 > - Accepts `model` as a bare string (upstream #118 crash on newer Claude Code).
 
@@ -283,6 +283,7 @@ context_limit = 1000000
 - **Terminal**: Must support Nerd Fonts for proper icon display
   - Install a [Nerd Font](https://www.nerdfonts.com/) (e.g., FiraCode Nerd Font, JetBrains Mono Nerd Font)
   - Configure your terminal to use the Nerd Font
+  - Windows without a Nerd Font: icons automatically fall back to emoji (`CCLINE_NERD_FONT=1` forces Nerd Font icons if yours isn't detected)
 - **Claude Code**: For statusline integration
 
 ## Development
@@ -297,6 +298,15 @@ cargo test
 # Build optimized release
 cargo build --release
 ```
+
+### Releasing (maintainers)
+
+1. Bump `version` in `Cargo.toml`, commit, then `git tag vX.Y.Z && git push origin master vX.Y.Z`.
+2. GitHub Actions (`release.yml`) builds all 7 targets and attaches them to a GitHub Release.
+3. Publish to npm from your machine with your own `npm login` session (no CI token needed):
+   ```bash
+   node npm/scripts/publish-from-release.js X.Y.Z            # add --dry-run to rehearse
+   ```
 
 ## Roadmap
 

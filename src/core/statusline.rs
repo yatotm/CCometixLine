@@ -288,10 +288,15 @@ impl StatusLineGenerator {
     }
 
     fn get_icon(&self, config: &SegmentConfig) -> String {
-        match self.config.style.mode {
-            StyleMode::Plain => config.icon.plain.clone(),
-            StyleMode::NerdFont => config.icon.nerd_font.clone(),
-            StyleMode::Powerline => config.icon.nerd_font.clone(), // Future: use Powerline icons
+        let wants_nerd_font = matches!(
+            self.config.style.mode,
+            StyleMode::NerdFont | StyleMode::Powerline
+        );
+        // Without a Nerd Font the PUA glyphs cannot render, so use the emoji variant
+        if wants_nerd_font && icons::nerd_font_usable() {
+            config.icon.nerd_font.clone()
+        } else {
+            config.icon.plain.clone()
         }
     }
 

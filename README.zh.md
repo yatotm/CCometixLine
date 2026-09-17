@@ -10,7 +10,7 @@
 > **Fork 说明** — 本仓库是 [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine)（基于 v1.1.2）的维护分支，npm 包名为 `@yatotm/ccline`。相对上游的改动：
 > - **用量段** 同时显示七天和五小时用量（`7d% 5h%`）。
 > - **上下文窗口** 优先使用 Claude Code（≥ 2.0.37）在 statusline JSON 中报告的 `context_window.context_window_size`，因此新版 CLI 下不带 `[1m]` 后缀也能正确识别 1M 上下文；老版本 CLI 沿用后缀判断逻辑。Fable/Mythos 默认 1M。
-> - **Windows 图标**：渲染时把 BMP 之外的 Nerd Font 图标（Material Design 区）替换为 BMP 内等价图标，修复显示为 `?` 的问题。
+> - **Windows 图标**：使用系统自带字体（未安装 Nerd Font）的 cmd/PowerShell 下，图标自动退回主题的 emoji 版本而不是显示 `?`；已安装 Nerd Font 时，把 BMP 之外的 Material Design 图标替换为 BMP 内等价图标。可用 `CCLINE_NERD_FONT=1` / `0` 强制指定。
 > - **默认配置** 为 `cometix` 主题且所有段落启用。
 > - 兼容 `model` 字段为纯字符串的输入（上游 #118 在新版 Claude Code 下崩溃）。
 
@@ -290,6 +290,15 @@ cargo test
 # 构建优化版本
 cargo build --release
 ```
+
+### 发布（维护者）
+
+1. 修改 `Cargo.toml` 的 `version` 并提交，然后 `git tag vX.Y.Z && git push origin master vX.Y.Z`。
+2. GitHub Actions（`release.yml`）会编译全部 7 个平台并附加到 GitHub Release。
+3. 在本机用自己的 `npm login` 会话发布到 npm（无需在 CI 里放 token）：
+   ```bash
+   node npm/scripts/publish-from-release.js X.Y.Z            # 加 --dry-run 可先演练
+   ```
 
 ## 路线图
 
