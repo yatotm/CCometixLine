@@ -7,7 +7,7 @@
   "cpu": ["x64"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yatotm/CCometixLine"
+    "url": "git+https://github.com/yatotm/CCometixLine.git"
   },
   "author": "yatotm",
   "license": "MIT"
