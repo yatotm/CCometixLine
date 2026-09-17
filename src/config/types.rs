@@ -85,10 +85,42 @@ pub struct SegmentsConfig {
 }
 
 // Data structures compatible with existing main.rs
-#[derive(Deserialize)]
 pub struct Model {
     pub id: String,
     pub display_name: String,
+}
+
+// Claude Code sends `model` either as `{ id, display_name }` or as a bare id string.
+impl<'de> Deserialize<'de> for Model {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum RawModel {
+            Id(String),
+            Object {
+                id: String,
+                #[serde(default)]
+                display_name: String,
+            },
+        }
+
+        Ok(match RawModel::deserialize(deserializer)? {
+            RawModel::Id(id) => Model {
+                id,
+                display_name: String::new(),
+            },
+            RawModel::Object { id, display_name } => Model { id, display_name },
+        })
+    }
+}
+
+/// Native context window info reported by Claude Code (v2.0.37+).
+/// `context_window_size` is the effective window for the running session,
+/// so it already reflects whether 1M context is active for the model.
+#[derive(Deserialize, Default)]
+pub struct ContextWindowInfo {
+    #[serde(default)]
+    pub context_window_size: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -117,6 +149,18 @@ pub struct InputData {
     pub transcript_path: String,
     pub cost: Option<Cost>,
     pub output_style: Option<OutputStyle>,
+    #[serde(default)]
+    pub context_window: Option<ContextWindowInfo>,
+}
+
+impl InputData {
+    /// Context limit reported by Claude Code itself; `None` on older CLI versions.
+    pub fn native_context_limit(&self) -> Option<u32> {
+        self.context_window
+            .as_ref()
+            .and_then(|cw| cw.context_window_size)
+            .filter(|&size| size > 0)
+    }
 }
 
 // OpenAI-style nested token details

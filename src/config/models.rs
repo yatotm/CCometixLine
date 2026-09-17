@@ -102,6 +102,9 @@ impl ModelConfig {
                 BuiltinModelFamily::new("sonnet", "Sonnet", 200_000),
                 BuiltinModelFamily::new("opus", "Opus", 200_000),
                 BuiltinModelFamily::new("haiku", "Haiku", 200_000),
+                // Fable/Mythos ship with a 1M window by default (no [1m] suffix)
+                BuiltinModelFamily::new("fable", "Fable", 1_000_000),
+                BuiltinModelFamily::new("mythos", "Mythos", 1_000_000),
             ]
         })
     }
@@ -175,28 +178,34 @@ impl ModelConfig {
     ///
     /// Matching priority for context_limit:
     ///   1. Context modifiers (e.g., `[1m]` → 1M) — highest priority
-    ///   2. Model entries / built-in families (from whichever matched display_name)
-    ///   3. Default (200k)
-    fn resolve(&self, model_id: &str) -> (Option<String>, u32, Option<String>) {
+    ///   2. Model entries (explicit user/third-party overrides)
+    ///   3. `native_limit` reported by Claude Code (absent on old CLI versions)
+    ///   4. Built-in Claude families
+    ///   5. Default (200k)
+    fn resolve(
+        &self,
+        model_id: &str,
+        native_limit: Option<u32>,
+    ) -> (Option<String>, u32, Option<String>) {
         let model_lower = model_id.to_lowercase();
 
-        // Phase 1: Find base display name and its context_limit
-        let (base_name, base_limit) = self
+        let entry = self
             .model_entries
             .iter()
-            .find(|e| model_lower.contains(&e.pattern.to_lowercase()))
-            .map(|e| (Some(e.display_name.clone()), Some(e.context_limit)))
-            .unwrap_or_else(|| {
-                Self::match_builtin_family(model_id)
-                    .map(|(name, limit)| (Some(name), Some(limit)))
-                    .unwrap_or((None, None))
-            });
-
-        // Phase 2: Find matching context modifier (independent of model identity)
+            .find(|e| model_lower.contains(&e.pattern.to_lowercase()));
+        let builtin = if entry.is_none() {
+            Self::match_builtin_family(model_id)
+        } else {
+            None
+        };
         let modifier = self
             .context_modifiers
             .iter()
             .find(|m| model_lower.contains(&m.pattern.to_lowercase()));
+
+        let base_name = entry
+            .map(|e| e.display_name.clone())
+            .or_else(|| builtin.as_ref().map(|(name, _)| name.clone()));
 
         // Compose display name with modifier suffix
         let display_name = match (&base_name, modifier) {
@@ -205,10 +214,11 @@ impl ModelConfig {
             (None, _) => None,
         };
 
-        // Context limit: modifier overrides base
         let context_limit = modifier
             .map(|m| m.context_limit)
-            .or(base_limit)
+            .or(entry.map(|e| e.context_limit))
+            .or(native_limit)
+            .or(builtin.map(|(_, limit)| limit))
             .unwrap_or(200_000);
 
         let modifier_suffix = modifier.map(|m| m.display_suffix.clone());
@@ -216,29 +226,18 @@ impl ModelConfig {
         (display_name, context_limit, modifier_suffix)
     }
 
-    /// Get context limit for a model based on ID pattern matching.
-    /// Priority: context modifiers > model entries > built-in families > default (200k).
-    pub fn get_context_limit(&self, model_id: &str) -> u32 {
-        let (_, limit, _) = self.resolve(model_id);
+    /// Get context limit for a model.
+    /// Priority: context modifiers > model entries > `native_limit` > built-in families > default (200k).
+    pub fn get_context_limit(&self, model_id: &str, native_limit: Option<u32>) -> u32 {
+        let (_, limit, _) = self.resolve(model_id, native_limit);
         limit
-    }
-
-    /// Try to get context limit for a model, returns None if no match found.
-    /// Returns `Some(limit)` if any layer matched (modifier, entry, or builtin family).
-    pub fn try_get_context_limit(&self, model_id: &str) -> Option<u32> {
-        let (display_name, limit, modifier_suffix) = self.resolve(model_id);
-        if display_name.is_some() || modifier_suffix.is_some() {
-            Some(limit)
-        } else {
-            None
-        }
     }
 
     /// Get display name for a model using layered matching.
     /// Composes base name with any matching context modifier suffix.
     /// Returns None if nothing matches (caller should use upstream fallback display_name).
     pub fn get_display_name(&self, model_id: &str) -> Option<String> {
-        let (display_name, _, _) = self.resolve(model_id);
+        let (display_name, _, _) = self.resolve(model_id, None);
         display_name
     }
 
@@ -246,7 +245,7 @@ impl ModelConfig {
     /// Used to append modifier info (e.g., " 1M") to upstream fallback display names
     /// when the model itself is not recognized by our config.
     pub fn get_display_suffix(&self, model_id: &str) -> Option<String> {
-        let (_, _, suffix) = self.resolve(model_id);
+        let (_, _, suffix) = self.resolve(model_id, None);
         suffix
     }
 
@@ -257,9 +256,12 @@ impl ModelConfig {
              # This file defines model display names and context limits for different LLM models\n\
              # File location: ~/.claude/ccline/models.toml\n\
              #\n\
-             # Claude models are automatically recognized (Sonnet, Opus, Haiku) with\n\
-             # version extraction. You only need to add entries here for overrides or\n\
+             # Claude models are automatically recognized (Sonnet, Opus, Haiku, Fable, Mythos)\n\
+             # with version extraction. You only need to add entries here for overrides or\n\
              # third-party models.\n\
+             #\n\
+             # Context limit priority: [[context_modifiers]] > [[models]] entries >\n\
+             # context_window_size reported by Claude Code > built-in families > 200k\n\
              \n\
              # Model configurations (simple substring matching)\n\
              # Each [[models]] section defines a model pattern and its properties\n\
@@ -296,7 +298,7 @@ impl Default for ModelConfig {
     fn default() -> Self {
         Self {
             // Only third-party models need explicit entries.
-            // Claude models (Sonnet, Opus, Haiku) are handled by built-in regex families.
+            // Claude models (Sonnet, Opus, Haiku, Fable, Mythos) are handled by built-in regex families.
             model_entries: vec![
                 ModelEntry {
                     pattern: "glm-4.5".to_string(),

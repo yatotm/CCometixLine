@@ -12,18 +12,13 @@ impl ContextWindowSegment {
     pub fn new() -> Self {
         Self
     }
-
-    /// Get context limit for the specified model
-    fn get_context_limit_for_model(model_id: &str) -> u32 {
-        let model_config = ModelConfig::load();
-        model_config.get_context_limit(model_id)
-    }
 }
 
 impl Segment for ContextWindowSegment {
     fn collect(&self, input: &InputData) -> Option<SegmentData> {
-        // Dynamically determine context limit based on current model ID
-        let context_limit = Self::get_context_limit_for_model(&input.model.id);
+        // Prefer the window Claude Code reports for this session; fall back to model ID rules
+        let context_limit =
+            ModelConfig::load().get_context_limit(&input.model.id, input.native_context_limit());
 
         let context_used_token_opt = parse_transcript_usage(&input.transcript_path);
 
