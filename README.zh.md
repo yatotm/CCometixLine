@@ -288,6 +288,22 @@ context_limit = 1000000
   - 在终端中配置使用该字体
 - **Claude Code**: 用于状态栏集成
 
+## cclean：一键重置 Claude Code 环境
+
+[`cclean/`](cclean/README.md) 是一个仅依赖标准库的单文件 Python 3 脚本，用来备份、清理并重装 Claude Code 和本状态栏：结束运行中的会话，卸载 npm / 原生 / brew / winget 安装，删除 `~/.claude` 和 `ANTHROPIC_*` / `CLAUDE_*` 用户级环境变量，然后经代理安装指定版本的 Claude Code、安装 `@yatotm/ccline`、写入隐私向的 `settings.json` 并登录。无需克隆仓库，直接运行：
+
+```powershell
+# Windows（PowerShell）
+irm https://raw.githubusercontent.com/yatotm/CCometixLine/master/cclean/cclean.ps1 | iex
+```
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/yatotm/CCometixLine/master/cclean/cclean.sh | sh
+```
+
+两个启动器都接受 cclean 参数，例如 `... | sh -s -- run --dry-run -y`。全部选项见 [cclean README](cclean/README.md)。
+
 ## 开发
 
 ```bash

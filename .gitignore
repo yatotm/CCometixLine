@@ -8,3 +8,6 @@ PRD.md
 
 # Local npm publishing workspace (see npm/scripts/publish-from-release.js)
 npm-publish/
+
+# Python bytecode (cclean/)
+__pycache__/

@@ -296,6 +296,22 @@ context_limit = 1000000
   - Windows without a Nerd Font: icons automatically fall back to emoji; run `ccline --install-font` for real icons in Windows Terminal (`CCLINE_NERD_FONT=1` forces Nerd Font icons if yours isn't detected)
 - **Claude Code**: For statusline integration
 
+## cclean: reset a Claude Code environment
+
+[`cclean/`](cclean/README.md) is a standalone Python 3 script (standard library only) that backs up, wipes and reinstalls Claude Code plus this statusline: kills running sessions, uninstalls npm / native / brew / winget installs, clears `~/.claude` and `ANTHROPIC_*` / `CLAUDE_*` user environment variables, then installs a pinned Claude Code version through a proxy, installs `@yatotm/ccline`, writes a privacy-oriented `settings.json` and logs in. Run it from anywhere without cloning:
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/yatotm/CCometixLine/master/cclean/cclean.ps1 | iex
+```
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/yatotm/CCometixLine/master/cclean/cclean.sh | sh
+```
+
+Both launchers accept cclean arguments, e.g. `... | sh -s -- run --dry-run -y`. See the [cclean README](cclean/README.md) for every option.
+
 ## Development
 
 ```bash
