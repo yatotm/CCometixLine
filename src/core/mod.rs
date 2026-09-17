@@ -1,3 +1,4 @@
+pub mod icons;
 pub mod segments;
 pub mod statusline;
 

@@ -1,4 +1,5 @@
 use crate::config::{AnsiColor, Config, SegmentConfig, StyleMode};
+use crate::core::icons;
 use crate::core::segments::SegmentData;
 
 /// Strip ANSI escape sequences and return visible text length
@@ -214,6 +215,11 @@ impl StatusLineGenerator {
     }
 
     fn render_segment(&self, config: &SegmentConfig, data: &SegmentData) -> String {
+        let rendered = self.render_segment_raw(config, data);
+        icons::platform_safe(&rendered).into_owned()
+    }
+
+    fn render_segment_raw(&self, config: &SegmentConfig, data: &SegmentData) -> String {
         let icon = if let Some(dynamic_icon) = data.metadata.get("dynamic_icon") {
             dynamic_icon.clone()
         } else {
