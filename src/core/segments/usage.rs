@@ -247,8 +247,9 @@ impl Segment for UsageSegment {
         };
 
         let dynamic_icon = Self::get_circle_icon(seven_day_util / 100.0);
+        let seven_day_percent = seven_day_util.round() as u8;
         let five_hour_percent = five_hour_util.round() as u8;
-        let primary = format!("{}%", five_hour_percent);
+        let primary = format!("{}% {}%", seven_day_percent, five_hour_percent);
         let secondary = format!("· {}", Self::format_reset_time(resets_at.as_deref()));
 
         let mut metadata = HashMap::new();
