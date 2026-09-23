@@ -35,7 +35,7 @@ python cclean.py            # Windows 也可直接双击 cclean.cmd
 
 # 非交互一键执行（默认全部步骤开启，用 --no-xxx 关闭）
 python cclean.py run -y --proxy http://127.0.0.1:7891
-python cclean.py run -y --no-backup --claude-version 2.1.267 --install-method native
+python cclean.py run -y --no-backup --claude-version 2.1.280 --install-method native
 
 # 先预览会做什么，不做任何更改
 python cclean.py run --dry-run -y
@@ -46,7 +46,7 @@ python cclean.py post-login
 # 从备份恢复配置文件（~/.claude、~/.claude.json*、Windows 用户环境变量）
 python cclean.py restore --from ~/claude-backup-20260917-180000
 
-# 在本机重新提取 settings.json 模板（只保留隐私 / 自动更新 / 子 Agent 相关键）
+# 在本机重新提取 settings.json 模板（只保留隐私 / 自动更新 / 子 Agent / Todo 相关键）
 python cclean.py export-template -o template.json
 python cclean.py run --template template.json
 ```
@@ -59,7 +59,7 @@ python cclean.py run --template template.json
 | 备份时排除会话记录/缓存 | 关 | 跳过 projects / file-history / shell-snapshots 等大目录 |
 | 清理现有安装与全部配置 | 开 | 结束 claude 进程；`npm uninstall -g`、brew / winget 卸载、删除原生安装 (`~/.local/bin/claude`, `~/.local/share/claude`)、删除 `~/.claude` 与 `~/.claude.json*`、macOS Keychain 条目 |
 | 清理 ANTHROPIC_* / CLAUDE_* 用户级环境变量 | 开 | Windows：删除 HKCU\Environment 中的变量并广播刷新，注释 PowerShell profile 中的相关行；Unix：注释 `.zshrc` / `.bashrc` 等中的 export 行（前缀 `# cclean-disabled:`）。系统级 (HKLM) 变量只提示不删 |
-| 安装 Claude Code | 开 | 版本默认 `2.1.267`，可填 `latest` / `stable`。`native` 方式复刻官方安装器：下载指定版本二进制 → SHA256 校验 → `claude install <版本>`，下载走 TUI 里的代理；`npm` 方式执行 `npm install -g @anthropic-ai/claude-code@<版本>` |
+| 安装 Claude Code | 开 | 版本默认 `2.1.280`，可填 `latest` / `stable`。`native` 方式复刻官方安装器：下载指定版本二进制 → SHA256 校验 → `claude install <版本>`，下载走 TUI 里的代理；`npm` 方式执行 `npm install -g @anthropic-ai/claude-code@<版本>` |
 | 安装 ccline | 开 | 默认包 `@yatotm/ccline`。安装前先 `npm uninstall -g` 其他版本（如原版 `@cometix/ccline`）并删除旧的 `~/.claude/ccline/ccline` 二进制，再 `npm install -g`，随后写入本机 `~/.claude/ccline/config.toml`（cometix 主题、usage 段 180 秒自动刷新）。图标模式可选 `nerd_font` / `plain` |
 | 代理 | `http://127.0.0.1:7891` | 同时用于脚本自身下载、npm、以及写入 settings.json 的 `HTTP_PROXY` / `HTTPS_PROXY`；留空则不设置 |
 | 预置 hasCompletedOnboarding | 开 | 在 `~/.claude.json` 写入 `hasCompletedOnboarding: true`，跳过首启对 api.anthropic.com 的连通性探测，规避 Windows 上的 `Unable to connect to Anthropic services / ERR_BAD_REQUEST` |
@@ -77,6 +77,7 @@ python cclean.py run --template template.json
     "DISABLE_ERROR_REPORTING": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
     "HTTP_PROXY": "http://127.0.0.1:7891",
     "HTTPS_PROXY": "http://127.0.0.1:7891",
     "NO_PROXY": "localhost,127.0.0.1,::1"

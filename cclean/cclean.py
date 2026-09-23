@@ -7,7 +7,7 @@ cclean - Claude Code 环境一键备份 / 清理 / 重装工具 (Windows / macOS
   python cclean.py                     交互式 TUI
   python cclean.py run [选项]          非交互执行 (见 --help)
   python cclean.py post-login          OAuth 登录后追加 Bedrock/Vertex 参数
-  python cclean.py export-template     从本机 settings.json 提取模板 (隐私/更新/子Agent 相关键)
+  python cclean.py export-template     从本机 settings.json 提取模板 (隐私/更新/子Agent/Todo 相关键)
   python cclean.py restore --from DIR  从备份目录恢复配置文件
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ from typing import Dict, List, Optional, Tuple
 WIN = sys.platform == "win32"
 MAC = sys.platform == "darwin"
 
-DEFAULT_CLAUDE_VERSION = "2.1.267"
+DEFAULT_CLAUDE_VERSION = "2.1.280"
 DEFAULT_PROXY = "http://127.0.0.1:7891"
 # ccline 的 npm 包 (可带 @版本); 安装前会先卸载 CCLINE_KNOWN_PKGS 中的其他版本
 DEFAULT_CCLINE_PKG = "@yatotm/ccline"
@@ -45,6 +45,7 @@ CCLINE_KNOWN_PKGS = ("@cometix/ccline", "@yatotm/ccline")  # 清理时一并卸�
 ENV_PREFIXES = ("ANTHROPIC_", "CLAUDE_")  # 需清理的用户级环境变量前缀
 TEMPLATE_ENV_PREFIXES = (
     "DISABLE_", "CLAUDE_CODE_DISABLE_", "CLAUDE_CODE_MAX_SUBAGENT",
+    "CLAUDE_CODE_ENABLE_TODO_TOOLS",
     "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
 )
 TEMPLATE_TOP_KEYS = ("includeCoAuthoredBy", "crossSessionInbound")
@@ -53,7 +54,7 @@ BULKY_DIRS = (
     "session-env", "sessions", "cache", "todos", "statsig", "downloads", "daemon",
 )
 
-# ---- 模板: 从本机 settings.json 提取, 仅保留隐私 / 自动更新 / 子Agent 相关配置 ----
+# ---- 模板: 从本机 settings.json 提取, 仅保留隐私 / 自动更新 / 子Agent / Todo 相关配置 ----
 SETTINGS_TEMPLATE: Dict = {
     "$schema": "https://json.schemastore.org/claude-code-settings.json",
     "env": {
@@ -62,6 +63,7 @@ SETTINGS_TEMPLATE: Dict = {
         "DISABLE_ERROR_REPORTING": "1",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
         "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
+        "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1",
     },
     "includeCoAuthoredBy": False,
     "permissions": {"deny": ["ListAgents"]},
