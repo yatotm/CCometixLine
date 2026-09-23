@@ -51,6 +51,12 @@ python cclean.py export-template -o template.json
 python cclean.py run --template template.json
 ```
 
+## OAuth 手动授权
+
+安装后的 OAuth 登录不会自动弹出浏览器。复制终端中 Claude Code 输出的完整授权链接，在你选择的浏览器中打开并完成授权，然后返回终端。如果网页显示授权码，按终端的 `Paste code here if prompted` 提示粘贴即可。
+
+脚本直接为登录子进程设置 `BROWSER=echo`，适用于 Windows（cmd / PowerShell）、macOS 和 Linux，无需手动执行 `set` / `$env:` / `export`。该设置仅在本次登录子进程中生效；代理配置、终端输入输出和登录状态检查照常工作。已登录时直接跳过授权。
+
 ## TUI 选项
 
 | 选项 | 默认 | 说明 |
@@ -63,7 +69,7 @@ python cclean.py run --template template.json
 | 安装 ccline | 开 | 默认包 `@yatotm/ccline`。安装前先 `npm uninstall -g` 其他版本（如原版 `@cometix/ccline`）并删除旧的 `~/.claude/ccline/ccline` 二进制，再 `npm install -g`，随后写入本机 `~/.claude/ccline/config.toml`（cometix 主题、usage 段 180 秒自动刷新）。图标模式可选 `nerd_font` / `plain` |
 | 代理 | `http://127.0.0.1:7891` | 同时用于脚本自身下载、npm、以及写入 settings.json 的 `HTTP_PROXY` / `HTTPS_PROXY`；留空则不设置 |
 | 预置 hasCompletedOnboarding | 开 | 在 `~/.claude.json` 写入 `hasCompletedOnboarding: true`，跳过首启对 api.anthropic.com 的连通性探测，规避 Windows 上的 `Unable to connect to Anthropic services / ERR_BAD_REQUEST` |
-| 安装后立即登录 | 开 | 运行 `claude auth login --claudeai`，结束后用 `claude auth status --json` 确认 |
+| 安装后立即登录 | 开 | 运行 `claude auth login --claudeai`，手动复制授权链接到所选浏览器，不自动弹出浏览器；结束后用 `claude auth status --json` 确认 |
 | 登录后追加 Bedrock/Vertex 参数 | 关 | 仅在 `claude auth status` 报告已登录时才写入，避免影响 OAuth 认证路由；未登录时提示稍后运行 `post-login` |
 | 仅预览 | 关 | 打印每一步将做什么，不做任何更改 |
 

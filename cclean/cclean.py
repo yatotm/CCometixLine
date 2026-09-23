@@ -1133,7 +1133,7 @@ def auth_status(claude: str, proxy: str = "") -> Dict:
 
 
 def do_login(o: Opts) -> bool:
-    log("OAuth 登录 (claude auth login --claudeai)", "step")
+    log("OAuth 登录 (手动打开授权链接)", "step")
     if o.dry_run:
         return False
     claude = find_claude()
@@ -1143,8 +1143,12 @@ def do_login(o: Opts) -> bool:
     if st.get("loggedIn"):
         log(f"已登录: {st.get('email', '')} ({st.get('subscriptionType', '')})", "ok")
         return True
-    log("即将打开浏览器完成授权; 结束后自动返回")
-    run([claude, "auth", "login", "--claudeai"], capture=False, env=child_env(o.proxy), timeout=900)
+    log("请复制下方完整授权链接, 在你选择的浏览器中打开; 授权完成后返回此终端")
+    log("若网页显示授权码, 请按 Claude Code 的提示粘贴到终端")
+    login_env = child_env(o.proxy)
+    # 直接传入子进程环境, 兼容 cmd / PowerShell / macOS / Linux, 不修改当前终端环境。
+    login_env["BROWSER"] = "echo"
+    run([claude, "auth", "login", "--claudeai"], capture=False, env=login_env, timeout=900)
     st = auth_status(claude, o.proxy)
     ok = bool(st.get("loggedIn"))
     log(f"登录{'成功' if ok else '未完成'}: {st.get('email', '')}", "ok" if ok else "warn")
@@ -1243,7 +1247,7 @@ def plan_lines(o: Opts) -> List[str]:
     if o.seed_onboarding:
         L.append("预置 hasCompletedOnboarding=true")
     if o.login:
-        L.append("运行 claude auth login --claudeai")
+        L.append("运行 claude auth login --claudeai (不自动打开浏览器, 手动复制授权链接)")
     if o.bedrock_vertex:
         L.append("登录成功后追加 CLAUDE_CODE_USE_BEDROCK/VERTEX=1")
     if o.dry_run:
@@ -1325,7 +1329,7 @@ FIELDS: List[Tuple] = [
     ("ccline_icons", "choice", "  图标模式", ["nerd_font", "plain"]),
     ("proxy", "text", "代理地址:端口 (留空=不设置)"),
     ("seed_onboarding", "bool", "预置 hasCompletedOnboarding (规避 Windows ERR_BAD_REQUEST)"),
-    ("login", "bool", "安装后立即运行 claude auth login (OAuth)"),
+    ("login", "bool", "安装后 OAuth 登录 (手动打开授权链接)"),
     ("bedrock_vertex", "bool", "OAuth 登录成功后追加 CLAUDE_CODE_USE_BEDROCK/VERTEX=1"),
     ("dry_run", "bool", "仅预览, 不做任何更改"),
 ]
