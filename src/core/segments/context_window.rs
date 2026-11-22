@@ -2,30 +2,60 @@ use super::{Segment, SegmentData};
 use crate::config::{InputData, ModelConfig, SegmentId, TranscriptEntry};
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+use std::path::Path;
 
-#[derive(Default)]
-pub struct ContextWindowSegment;
+const TRANSCRIPT_TAIL_BYTES: u64 = 256 * 1024;
+
+pub struct ContextWindowSegment {
+    model_config: Option<ModelConfig>,
+    dynamic_color: bool,
+}
+
+impl Default for ContextWindowSegment {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ContextWindowSegment {
     pub fn new() -> Self {
-        Self
+        Self {
+            model_config: None,
+            dynamic_color: true,
+        }
+    }
+
+    pub fn with_model_config(mut self, model_config: ModelConfig) -> Self {
+        self.model_config = Some(model_config);
+        self
+    }
+
+    pub fn with_dynamic_color(mut self, dynamic_color: bool) -> Self {
+        self.dynamic_color = dynamic_color;
+        self
     }
 }
 
 impl Segment for ContextWindowSegment {
     fn collect(&self, input: &InputData) -> Option<SegmentData> {
+        let loaded;
+        let model_config = match &self.model_config {
+            Some(cfg) => cfg,
+            None => {
+                loaded = ModelConfig::load();
+                &loaded
+            }
+        };
+
         // Prefer the window Claude Code reports for this session; fall back to model ID rules
         let context_limit =
-            ModelConfig::load().get_context_limit(&input.model.id, input.native_context_limit());
+            model_config.get_context_limit(&input.model.id, input.native_context_limit());
 
-        let context_used_token_opt = parse_transcript_usage(&input.transcript_path);
+        let usage_opt = resolve_usage(input, context_limit);
 
-        let (percentage_display, tokens_display) = match context_used_token_opt {
-            Some(context_used_token) => {
-                let context_used_rate = (context_used_token as f64 / context_limit as f64) * 100.0;
-
+        let (percentage_display, tokens_display) = match usage_opt {
+            Some((context_used_rate, context_used_token)) => {
                 let percentage = if context_used_rate.fract() == 0.0 {
                     format!("{:.0}%", context_used_rate)
                 } else {
@@ -52,11 +82,17 @@ impl Segment for ContextWindowSegment {
         };
 
         let mut metadata = HashMap::new();
-        match context_used_token_opt {
-            Some(context_used_token) => {
-                let context_used_rate = (context_used_token as f64 / context_limit as f64) * 100.0;
+        match usage_opt {
+            Some((context_used_rate, context_used_token)) => {
                 metadata.insert("tokens".to_string(), context_used_token.to_string());
                 metadata.insert("percentage".to_string(), context_used_rate.to_string());
+                if self.dynamic_color {
+                    if context_used_rate >= 80.0 {
+                        metadata.insert("severity".to_string(), "crit".to_string());
+                    } else if context_used_rate >= 60.0 {
+                        metadata.insert("severity".to_string(), "warn".to_string());
+                    }
+                }
             }
             None => {
                 metadata.insert("tokens".to_string(), "-".to_string());
@@ -78,38 +114,102 @@ impl Segment for ContextWindowSegment {
     }
 }
 
-fn parse_transcript_usage<P: AsRef<Path>>(transcript_path: P) -> Option<u32> {
-    let path = transcript_path.as_ref();
-
-    // Try to parse from current transcript file
-    if let Some(usage) = try_parse_transcript_file(path) {
-        return Some(usage);
+fn calc_percentage(tokens: u32, context_limit: u32) -> f64 {
+    if context_limit == 0 {
+        0.0
+    } else {
+        (tokens as f64 / context_limit as f64) * 100.0
     }
+}
 
-    // If file doesn't exist, try to find usage from project history
-    if !path.exists() {
-        if let Some(usage) = try_find_usage_from_project_history(path) {
-            return Some(usage);
+fn resolve_usage(input: &InputData, context_limit: u32) -> Option<(f64, u32)> {
+    if let Some(cw) = &input.context_window {
+        if let Some(usage) = &cw.current_usage {
+            let tokens = usage.active_context_tokens();
+            let native_size_matches = cw
+                .context_window_size
+                .is_none_or(|size| size == 0 || size == context_limit);
+            let pct = match cw.used_percentage {
+                Some(p) if native_size_matches => p,
+                _ => calc_percentage(tokens, context_limit),
+            };
+            return Some((pct, tokens));
+        }
+
+        if let Some(pct) = cw.used_percentage {
+            let tokens = ((pct / 100.0) * context_limit as f64).round().max(0.0) as u32;
+            return Some((pct, tokens));
         }
     }
 
-    None
+    if input.transcript_path.is_empty() {
+        return None;
+    }
+
+    let tokens = try_parse_transcript_file(Path::new(&input.transcript_path))?;
+    Some((calc_percentage(tokens, context_limit), tokens))
+}
+
+fn read_tail_lines(path: &Path, max_bytes: u64) -> Option<(Vec<String>, bool)> {
+    let mut file = fs::File::open(path).ok()?;
+    let len = file.metadata().ok()?.len();
+    if len == 0 {
+        return None;
+    }
+
+    let truncated = len > max_bytes;
+    if truncated {
+        file.seek(SeekFrom::End(-(max_bytes as i64))).ok()?;
+    }
+
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf).ok()?;
+
+    let slice = if truncated {
+        // Drop the leading partial line after seeking into the middle of the file.
+        match buf.iter().position(|&b| b == b'\n') {
+            Some(pos) => &buf[pos + 1..],
+            None => return None,
+        }
+    } else {
+        &buf[..]
+    };
+
+    let text = String::from_utf8_lossy(slice);
+    let lines: Vec<String> = text.lines().map(str::to_string).collect();
+    if lines.is_empty() {
+        None
+    } else {
+        Some((lines, truncated))
+    }
 }
 
 fn try_parse_transcript_file(path: &Path) -> Option<u32> {
+    let (tail_lines, truncated) = read_tail_lines(path, TRANSCRIPT_TAIL_BYTES)?;
+    if let Some(usage) = find_usage_in_lines(&tail_lines, path) {
+        return Some(usage);
+    }
+
+    if !truncated {
+        return None;
+    }
+
     let file = fs::File::open(path).ok()?;
     let reader = BufReader::new(file);
     let lines: Vec<String> = reader
         .lines()
         .collect::<Result<Vec<_>, _>>()
         .unwrap_or_default();
+    find_usage_in_lines(&lines, path)
+}
 
-    if lines.is_empty() {
-        return None;
-    }
-
-    // Check if the last line is a summary
-    let last_line = lines.last()?.trim();
+fn find_usage_in_lines(lines: &[String], path: &Path) -> Option<u32> {
+    // Check if the last non-empty line is a summary
+    let last_line = lines
+        .iter()
+        .rev()
+        .map(|l| l.trim())
+        .find(|l| !l.is_empty())?;
     if let Ok(entry) = serde_json::from_str::<TranscriptEntry>(last_line) {
         if entry.r#type.as_deref() == Some("summary") {
             // Handle summary case: find usage by leafUuid
@@ -222,44 +322,6 @@ fn find_assistant_message_by_uuid(lines: &[String], target_uuid: &str) -> Option
                     }
                 }
             }
-        }
-    }
-
-    None
-}
-
-fn try_find_usage_from_project_history(transcript_path: &Path) -> Option<u32> {
-    let project_dir = transcript_path.parent()?;
-
-    // Find the most recent session file in the project directory
-    let mut session_files: Vec<PathBuf> = Vec::new();
-    let entries = fs::read_dir(project_dir).ok()?;
-
-    for entry in entries {
-        let entry = entry.ok()?;
-        let path = entry.path();
-
-        if path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
-            session_files.push(path);
-        }
-    }
-
-    if session_files.is_empty() {
-        return None;
-    }
-
-    // Sort by modification time (most recent first)
-    session_files.sort_by_key(|path| {
-        fs::metadata(path)
-            .and_then(|m| m.modified())
-            .unwrap_or(std::time::UNIX_EPOCH)
-    });
-    session_files.reverse();
-
-    // Try to find usage from the most recent session
-    for session_path in &session_files {
-        if let Some(usage) = try_parse_transcript_file(session_path) {
-            return Some(usage);
         }
     }
 

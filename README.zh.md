@@ -7,12 +7,14 @@
 ![Language:Rust](https://img.shields.io/static/v1?label=Language&message=Rust&color=orange&style=flat-square)
 ![License:MIT](https://img.shields.io/static/v1?label=License&message=MIT&color=blue&style=flat-square)
 
-> **Fork 说明** — 本仓库是 [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine)（基于 v1.1.2）的维护分支，npm 包名为 `@yatotm/ccline`。相对上游的改动：
-> - **用量段** 同时显示七天和五小时用量（`7d% 5h%`）。
-> - **上下文窗口** 优先使用 Claude Code（≥ 2.0.37）在 statusline JSON 中报告的 `context_window.context_window_size`，因此新版 CLI 下不带 `[1m]` 后缀也能正确识别 1M 上下文；老版本 CLI 沿用后缀判断逻辑。Fable/Mythos 默认 1M。
+> **Fork 说明** — 本仓库是 [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine)（基于 v1.1.2）的维护分支，npm 包名为 `@yatotm/ccline`。相对上游 v1 的改动：
+> - **用量段** 通过 `/api/oauth/usage` 同时显示七天和五小时用量（`7d% 5h%`），确保多端使用准确；严格遵循 `settings.json` / `settings.local.json` 代理配置（支持 `socks5`，代理异常 fail-closed 绝不直连），内置 429 退避，并使用当前 Claude Code 真实版本号作为 User-Agent。
+> - **上下文窗口** 优先使用 Claude Code 原生 `context_window` 字段（`context_window_size`、`current_usage`、`used_percentage`），支持 1M 自动识别、Fable/Mythos 默认 1M，以及阈值动态变色（`≥60%` 黄色、`≥80%` 红色）。
+> - **Prompt Cache 与 Claude Code 2.1.x 新字段**：新增 `Cache` 段显示缓存剩余保鲜时间与命中率；`Model` 段显示推理强度（`Low`/`Med`/`High`/`xHigh`/`Max`）、fast mode 与当前子代理；`Git` 段支持 worktree 标记并合并为单次 `git status --porcelain=v2 --branch`（Windows 隐藏黑窗）；`Session` 显示 `/rename` 会话名；`OutputStyle` 显示 Vim 模式。
+> - **窄终端按需双行/多行显示**：读取 `COLUMNS` 并在终端变窄时按段优雅换行，宽屏保持单行不变。
 > - **Windows 图标**：使用系统自带字体（未安装 Nerd Font）的 cmd/PowerShell 下，图标自动退回主题的 emoji 版本而不是显示 `?`；已安装 Nerd Font 时，把 BMP 之外的 Material Design 图标替换为 BMP 内等价图标。可用 `CCLINE_NERD_FONT=1` / `0` 强制指定；`ccline --install-font` 可为 Windows Terminal 安装内置的 Nerd Font 符号字体。
 > - **默认配置** 为 `cometix` 主题且所有段落启用。
-> - 兼容 `model` 字段为纯字符串的输入（上游 #118 在新版 Claude Code 下崩溃）。
+> - 单字段容错反序列化（兼容字符串 `model`、浮点毫秒、缺失/`null` 字段）。
 
 ## 截图
 
@@ -200,20 +202,10 @@ ccline --theme powerline-dark
 ccline --theme my-custom-theme
 ```
 
-### Claude Code 增强
-
-```bash
-# 禁用上下文警告并启用详细模式
-ccline --patch /path/to/claude-code/cli.js
-
-# 常见安装路径示例
-ccline --patch ~/.local/share/fnm/node-versions/v24.4.1/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js
-```
-
 ## 默认段落
 
 首次安装默认使用 `cometix` 主题（Nerd Font 图标）并启用全部段落：
-`模型 | 目录 | Git | 上下文窗口 | 用量 | 花费 | 会话 | 输出风格`
+`模型 | 目录 | Git | 上下文窗口 | 缓存 | 用量 | 花费 | 会话 | 输出风格`
 
 ### Git 状态指示器
 

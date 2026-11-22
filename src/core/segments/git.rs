@@ -40,140 +40,90 @@ impl GitSegment {
     }
 
     fn get_git_info(&self, working_dir: &str) -> Option<GitInfo> {
-        if !self.is_git_repository(working_dir) {
+        if working_dir.is_empty() {
             return None;
         }
 
-        let branch = self
-            .get_branch(working_dir)
-            .unwrap_or_else(|| "detached".to_string());
-        let status = self.get_status(working_dir);
-        let (ahead, behind) = self.get_ahead_behind(working_dir);
-        let sha = if self.show_sha {
-            self.get_sha(working_dir)
+        let mut cmd = Command::new("git");
+        cmd.args(["--no-optional-locks", "status", "--porcelain=v2", "--branch"])
+            .current_dir(working_dir);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+        let output = cmd.output().ok()?;
+
+        if !output.status.success() {
+            return None;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        Some(Self::parse_porcelain_v2(&stdout, self.show_sha))
+    }
+
+    fn parse_porcelain_v2(output: &str, show_sha: bool) -> GitInfo {
+        let mut branch: Option<String> = None;
+        let mut oid: Option<&str> = None;
+        let mut ahead = 0u32;
+        let mut behind = 0u32;
+        let mut has_dirty = false;
+        let mut has_conflicts = false;
+
+        for line in output.lines() {
+            if let Some(rest) = line.strip_prefix("# branch.head ") {
+                if rest == "(detached)" {
+                    branch = Some("detached".to_string());
+                } else if !rest.is_empty() {
+                    branch = Some(rest.to_string());
+                }
+            } else if let Some(rest) = line.strip_prefix("# branch.oid ") {
+                if rest != "(initial)" && !rest.is_empty() {
+                    oid = Some(rest);
+                }
+            } else if let Some(rest) = line.strip_prefix("# branch.ab ") {
+                let mut parts = rest.split_whitespace();
+                if let Some(a) = parts.next().and_then(|s| s.strip_prefix('+')) {
+                    ahead = a.parse().unwrap_or(0);
+                }
+                if let Some(b) = parts.next().and_then(|s| s.strip_prefix('-')) {
+                    behind = b.parse().unwrap_or(0);
+                }
+            } else if line.starts_with("u ") {
+                has_conflicts = true;
+            } else if line.starts_with("1 ") || line.starts_with("2 ") || line.starts_with("? ") {
+                has_dirty = true;
+            }
+        }
+
+        let status = if has_conflicts {
+            GitStatus::Conflicts
+        } else if has_dirty {
+            GitStatus::Dirty
+        } else {
+            GitStatus::Clean
+        };
+
+        let sha = if show_sha {
+            oid.map(|full| full.chars().take(7).collect())
         } else {
             None
         };
 
-        Some(GitInfo {
-            branch,
+        GitInfo {
+            branch: branch.unwrap_or_else(|| "detached".to_string()),
             status,
             ahead,
             behind,
             sha,
-        })
-    }
-
-    fn is_git_repository(&self, working_dir: &str) -> bool {
-        Command::new("git")
-            .args(["--no-optional-locks", "rev-parse", "--git-dir"])
-            .current_dir(working_dir)
-            .output()
-            .map(|output| output.status.success())
-            .unwrap_or(false)
-    }
-
-    fn get_branch(&self, working_dir: &str) -> Option<String> {
-        if let Ok(output) = Command::new("git")
-            .args(["--no-optional-locks", "branch", "--show-current"])
-            .current_dir(working_dir)
-            .output()
-        {
-            if output.status.success() {
-                let branch = String::from_utf8(output.stdout).ok()?.trim().to_string();
-                if !branch.is_empty() {
-                    return Some(branch);
-                }
-            }
-        }
-
-        if let Ok(output) = Command::new("git")
-            .args(["--no-optional-locks", "symbolic-ref", "--short", "HEAD"])
-            .current_dir(working_dir)
-            .output()
-        {
-            if output.status.success() {
-                let branch = String::from_utf8(output.stdout).ok()?.trim().to_string();
-                if !branch.is_empty() {
-                    return Some(branch);
-                }
-            }
-        }
-
-        None
-    }
-
-    fn get_status(&self, working_dir: &str) -> GitStatus {
-        let output = Command::new("git")
-            .args(["--no-optional-locks", "status", "--porcelain"])
-            .current_dir(working_dir)
-            .output();
-
-        match output {
-            Ok(output) if output.status.success() => {
-                let status_text = String::from_utf8(output.stdout).unwrap_or_default();
-
-                if status_text.trim().is_empty() {
-                    return GitStatus::Clean;
-                }
-
-                if status_text.contains("UU")
-                    || status_text.contains("AA")
-                    || status_text.contains("DD")
-                {
-                    GitStatus::Conflicts
-                } else {
-                    GitStatus::Dirty
-                }
-            }
-            _ => GitStatus::Clean,
-        }
-    }
-
-    fn get_ahead_behind(&self, working_dir: &str) -> (u32, u32) {
-        let ahead = self.get_commit_count(working_dir, "@{u}..HEAD");
-        let behind = self.get_commit_count(working_dir, "HEAD..@{u}");
-        (ahead, behind)
-    }
-
-    fn get_commit_count(&self, working_dir: &str, range: &str) -> u32 {
-        let output = Command::new("git")
-            .args(["--no-optional-locks", "rev-list", "--count", range])
-            .current_dir(working_dir)
-            .output();
-
-        match output {
-            Ok(output) if output.status.success() => String::from_utf8(output.stdout)
-                .ok()
-                .and_then(|s| s.trim().parse().ok())
-                .unwrap_or(0),
-            _ => 0,
-        }
-    }
-
-    fn get_sha(&self, working_dir: &str) -> Option<String> {
-        let output = Command::new("git")
-            .args(["--no-optional-locks", "rev-parse", "--short=7", "HEAD"])
-            .current_dir(working_dir)
-            .output()
-            .ok()?;
-
-        if output.status.success() {
-            let sha = String::from_utf8(output.stdout).ok()?.trim().to_string();
-            if sha.is_empty() {
-                None
-            } else {
-                Some(sha)
-            }
-        } else {
-            None
         }
     }
 }
 
 impl Segment for GitSegment {
     fn collect(&self, input: &InputData) -> Option<SegmentData> {
-        let git_info = self.get_git_info(&input.workspace.current_dir)?;
+        let git_info = self.get_git_info(input.current_dir())?;
 
         let mut metadata = HashMap::new();
         metadata.insert("branch".to_string(), git_info.branch.clone());
@@ -205,6 +155,15 @@ impl Segment for GitSegment {
             status_parts.push(sha.clone());
         }
 
+        if let Some(wt) = input.worktree_name() {
+            metadata.insert("worktree".to_string(), wt.to_string());
+            if primary.contains(wt) {
+                status_parts.push("[wt]".to_string());
+            } else {
+                status_parts.push(format!("[wt:{}]", wt));
+            }
+        }
+
         Some(SegmentData {
             primary,
             secondary: status_parts.join(" "),
@@ -214,5 +173,70 @@ impl Segment for GitSegment {
 
     fn id(&self) -> SegmentId {
         SegmentId::Git
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_clean_repo_with_ahead_behind_and_sha() {
+        let out = "\
+# branch.oid 1234567890abcdef1234567890abcdef12345678
+# branch.head main
+# branch.upstream origin/main
+# branch.ab +3 -12
+";
+        let info = GitSegment::parse_porcelain_v2(out, true);
+        assert_eq!(info.branch, "main");
+        assert_eq!(info.status, GitStatus::Clean);
+        assert_eq!(info.ahead, 3);
+        assert_eq!(info.behind, 12);
+        assert_eq!(info.sha.as_deref(), Some("1234567"));
+    }
+
+    #[test]
+    fn filename_containing_uu_aa_dd_is_dirty_not_conflict() {
+        let out = "\
+# branch.oid 1234567890abcdef1234567890abcdef12345678
+# branch.head feature
+1 .M N... 100644 100644 100644 abcdef0 abcdef0 src/UUID.rs
+? README_AA_DD.md
+";
+        let info = GitSegment::parse_porcelain_v2(out, false);
+        assert_eq!(info.branch, "feature");
+        assert_eq!(info.status, GitStatus::Dirty);
+        assert_eq!(info.sha, None);
+    }
+
+    #[test]
+    fn unmerged_entry_reports_conflicts() {
+        let out = "\
+# branch.oid 1234567890abcdef1234567890abcdef12345678
+# branch.head main
+u DU N... 100644 000000 100644 100644 abcdef0 0000000 abcdef0 conflicted.rs
+";
+        let info = GitSegment::parse_porcelain_v2(out, false);
+        assert_eq!(info.status, GitStatus::Conflicts);
+    }
+
+    #[test]
+    fn handles_detached_head_and_initial_repo() {
+        let detached = "\
+# branch.oid deadbeef12345678
+# branch.head (detached)
+";
+        let info = GitSegment::parse_porcelain_v2(detached, true);
+        assert_eq!(info.branch, "detached");
+        assert_eq!(info.sha.as_deref(), Some("deadbee"));
+
+        let initial = "\
+# branch.oid (initial)
+# branch.head main
+";
+        let info = GitSegment::parse_porcelain_v2(initial, true);
+        assert_eq!(info.branch, "main");
+        assert_eq!(info.sha, None);
     }
 }

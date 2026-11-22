@@ -106,10 +106,13 @@ impl UpdateState {
 
         #[cfg(windows)]
         {
+            use std::os::windows::process::CommandExt;
             use std::process::Command;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             if let Ok(output) = Command::new("tasklist")
                 .arg("/FI")
-                .arg(&format!("PID eq {}", pid))
+                .arg(format!("PID eq {}", pid))
+                .creation_flags(CREATE_NO_WINDOW)
                 .output()
             {
                 String::from_utf8_lossy(&output.stdout).contains(&pid.to_string())

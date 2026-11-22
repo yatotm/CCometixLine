@@ -126,8 +126,8 @@ impl PreviewComponent {
                     },
                 },
                 SegmentId::ContextWindow => SegmentData {
-                    primary: "78.2%".to_string(),
-                    secondary: "· 156.4k".to_string(),
+                    primary: "78.2% · 156.4k tokens".to_string(),
+                    secondary: String::new(),
                     metadata: {
                         let mut map = HashMap::new();
                         map.insert("total_tokens".to_string(), "156400".to_string());
@@ -136,8 +136,13 @@ impl PreviewComponent {
                         map
                     },
                 },
+                SegmentId::Cache => SegmentData {
+                    primary: "42m".to_string(),
+                    secondary: "· 97%".to_string(),
+                    metadata: HashMap::new(),
+                },
                 SegmentId::Usage => SegmentData {
-                    primary: "24%".to_string(),
+                    primary: "24% 18%".to_string(),
                     secondary: "· 10-7-2".to_string(),
                     metadata: HashMap::new(),
                 },

@@ -52,6 +52,7 @@ impl SegmentListComponent {
                     SegmentId::Directory => "Directory",
                     SegmentId::Git => "Git",
                     SegmentId::ContextWindow => "Context Window",
+                    SegmentId::Cache => "Cache",
                     SegmentId::Usage => "Usage",
                     SegmentId::Cost => "Cost",
                     SegmentId::Session => "Session",

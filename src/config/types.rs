@@ -68,6 +68,7 @@ pub enum SegmentId {
     Directory,
     Git,
     ContextWindow,
+    Cache,
     Usage,
     Cost,
     Session,
@@ -84,7 +85,29 @@ pub struct SegmentsConfig {
     // pub usage: bool,
 }
 
+fn lenient_opt<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: serde::de::DeserializeOwned,
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).ok())
+}
+
+fn lenient_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Default + serde::de::DeserializeOwned,
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value::<Option<T>>(value)
+        .ok()
+        .flatten()
+        .unwrap_or_default())
+}
+
 // Data structures compatible with existing main.rs
+#[derive(Default)]
 pub struct Model {
     pub id: String,
     pub display_name: String,
@@ -98,8 +121,9 @@ impl<'de> Deserialize<'de> for Model {
         enum RawModel {
             Id(String),
             Object {
+                #[serde(default, deserialize_with = "lenient_default")]
                 id: String,
-                #[serde(default)]
+                #[serde(default, deserialize_with = "lenient_default")]
                 display_name: String,
             },
         }
@@ -114,46 +138,172 @@ impl<'de> Deserialize<'de> for Model {
     }
 }
 
+/// Token usage from the latest API turn, reported natively by Claude Code.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct CurrentContextUsage {
+    pub input_tokens: Option<u32>,
+    pub output_tokens: Option<u32>,
+    pub cache_creation_input_tokens: Option<u32>,
+    pub cache_read_input_tokens: Option<u32>,
+}
+
+impl CurrentContextUsage {
+    /// Active prompt context tokens matching Claude Code's `used_percentage` basis:
+    /// input + cache creation + cache read (excludes turn output tokens).
+    pub fn active_context_tokens(&self) -> u32 {
+        self.input_tokens
+            .unwrap_or(0)
+            .saturating_add(self.cache_creation_input_tokens.unwrap_or(0))
+            .saturating_add(self.cache_read_input_tokens.unwrap_or(0))
+    }
+}
+
 /// Native context window info reported by Claude Code (v2.0.37+).
 /// `context_window_size` is the effective window for the running session,
 /// so it already reflects whether 1M context is active for the model.
-#[derive(Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
 pub struct ContextWindowInfo {
-    #[serde(default)]
     pub context_window_size: Option<u32>,
+    pub used_percentage: Option<f64>,
+    pub remaining_percentage: Option<f64>,
+    pub current_usage: Option<CurrentContextUsage>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct Effort {
+    pub level: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct Thinking {
+    pub enabled: Option<bool>,
+}
+
+/// Prompt cache telemetry reported by Claude Code (v2.1.251+).
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct PromptCache {
+    pub warm: Option<bool>,
+    pub caching_observed: Option<bool>,
+    pub ttl: Option<String>,
+    /// Unix epoch seconds when the prompt cache expires.
+    pub expires_at: Option<f64>,
+    pub requests: Option<u64>,
+    pub misses: Option<u64>,
+    pub hit_ratio: Option<f64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct Worktree {
+    pub name: Option<String>,
+    pub path: Option<String>,
+    pub branch: Option<String>,
+    pub original_cwd: Option<String>,
+    pub original_branch: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct Vim {
+    pub mode: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct Agent {
+    pub name: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub struct Workspace {
+    #[serde(deserialize_with = "lenient_default")]
     pub current_dir: String,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub git_worktree: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub struct Cost {
     pub total_cost_usd: Option<f64>,
-    pub total_duration_ms: Option<u64>,
-    pub total_api_duration_ms: Option<u64>,
+    pub total_duration_ms: Option<f64>,
+    pub total_api_duration_ms: Option<f64>,
     pub total_lines_added: Option<u32>,
     pub total_lines_removed: Option<u32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub struct OutputStyle {
+    #[serde(deserialize_with = "lenient_default")]
     pub name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub struct InputData {
+    #[serde(deserialize_with = "lenient_default")]
     pub model: Model,
+    #[serde(deserialize_with = "lenient_default")]
     pub workspace: Workspace,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub cwd: Option<String>,
+    #[serde(deserialize_with = "lenient_default")]
     pub transcript_path: String,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub version: Option<String>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub session_name: Option<String>,
+    #[serde(deserialize_with = "lenient_opt")]
     pub cost: Option<Cost>,
+    #[serde(deserialize_with = "lenient_opt")]
     pub output_style: Option<OutputStyle>,
-    #[serde(default)]
+    #[serde(deserialize_with = "lenient_opt")]
     pub context_window: Option<ContextWindowInfo>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub exceeds_200k_tokens: Option<bool>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub effort: Option<Effort>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub thinking: Option<Thinking>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub fast_mode: Option<bool>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub prompt_cache: Option<PromptCache>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub worktree: Option<Worktree>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub vim: Option<Vim>,
+    #[serde(deserialize_with = "lenient_opt")]
+    pub agent: Option<Agent>,
 }
 
 impl InputData {
+    /// Effective working directory: prefers `workspace.current_dir`, falls back to `cwd`.
+    pub fn current_dir(&self) -> &str {
+        if !self.workspace.current_dir.is_empty() {
+            &self.workspace.current_dir
+        } else {
+            self.cwd.as_deref().unwrap_or("")
+        }
+    }
+
+    /// Active git worktree name reported by Claude Code, if running inside one.
+    pub fn worktree_name(&self) -> Option<&str> {
+        self.worktree
+            .as_ref()
+            .and_then(|w| w.name.as_deref())
+            .or(self.workspace.git_worktree.as_deref())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+    }
+
     /// Context limit reported by Claude Code itself; `None` on older CLI versions.
     pub fn native_context_limit(&self) -> Option<u32> {
         self.context_window

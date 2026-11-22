@@ -133,6 +133,24 @@ pub fn output_style_segment() -> SegmentConfig {
     }
 }
 
+pub fn cache_segment() -> SegmentConfig {
+    SegmentConfig {
+        id: SegmentId::Cache,
+        enabled: false,
+        icon: IconConfig {
+            plain: "⏳".to_string(),
+            nerd_font: "\u{f252}".to_string(),
+        },
+        colors: ColorConfig {
+            icon: Some(AnsiColor::Color16 { c16: 6 }),
+            text: Some(AnsiColor::Color16 { c16: 6 }),
+            background: None,
+        },
+        styles: TextStyleConfig::default(),
+        options: HashMap::new(),
+    }
+}
+
 pub fn usage_segment() -> SegmentConfig {
     SegmentConfig {
         id: SegmentId::Usage,

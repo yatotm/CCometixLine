@@ -217,6 +217,36 @@ pub fn output_style_segment() -> SegmentConfig {
     }
 }
 
+pub fn cache_segment() -> SegmentConfig {
+    SegmentConfig {
+        id: SegmentId::Cache,
+        enabled: false,
+        icon: IconConfig {
+            plain: "⏳".to_string(),
+            nerd_font: "\u{f252}".to_string(),
+        },
+        colors: ColorConfig {
+            icon: Some(AnsiColor::Rgb {
+                r: 136,
+                g: 192,
+                b: 208,
+            }),
+            text: Some(AnsiColor::Rgb {
+                r: 136,
+                g: 192,
+                b: 208,
+            }),
+            background: Some(AnsiColor::Rgb {
+                r: 50,
+                g: 56,
+                b: 66,
+            }),
+        },
+        styles: TextStyleConfig::default(),
+        options: HashMap::new(),
+    }
+}
+
 pub fn usage_segment() -> SegmentConfig {
     SegmentConfig {
         id: SegmentId::Usage,

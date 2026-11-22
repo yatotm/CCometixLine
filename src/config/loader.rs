@@ -114,9 +114,6 @@ impl ConfigLoader {
 impl Config {
     /// Load configuration from default location
     pub fn load() -> Result<Config, Box<dyn std::error::Error>> {
-        // Ensure themes directory exists and has built-in themes
-        ConfigLoader::ensure_themes_exist();
-
         let config_path = Self::get_config_path();
 
         if !config_path.exists() {

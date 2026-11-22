@@ -13,17 +13,36 @@ impl OutputStyleSegment {
 
 impl Segment for OutputStyleSegment {
     fn collect(&self, input: &InputData) -> Option<SegmentData> {
-        let output_style = input.output_style.as_ref()?;
-
-        // Primary display: style name
-        let primary = output_style.name.clone();
+        let style_name = input
+            .output_style
+            .as_ref()
+            .map(|s| s.name.trim())
+            .filter(|s| !s.is_empty());
+        let vim_mode = input
+            .vim
+            .as_ref()
+            .and_then(|v| v.mode.as_deref())
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
 
         let mut metadata = HashMap::new();
-        metadata.insert("style_name".to_string(), output_style.name.clone());
+        if let Some(style) = style_name {
+            metadata.insert("style_name".to_string(), style.to_string());
+        }
+        if let Some(vim) = vim_mode {
+            metadata.insert("vim_mode".to_string(), vim.to_string());
+        }
+
+        let (primary, secondary) = match (style_name, vim_mode) {
+            (Some(style), Some(vim)) => (style.to_string(), format!("[{}]", vim)),
+            (Some(style), None) => (style.to_string(), String::new()),
+            (None, Some(vim)) => (format!("[{}]", vim), String::new()),
+            (None, None) => return None,
+        };
 
         Some(SegmentData {
             primary,
-            secondary: String::new(),
+            secondary,
             metadata,
         })
     }

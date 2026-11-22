@@ -12,10 +12,6 @@ pub struct Cli {
     #[arg(short = 't', long = "theme")]
     pub theme: Option<String>,
 
-    /// Patch Claude Code cli.js to disable context warnings
-    #[arg(long = "patch")]
-    pub patch: Option<String>,
-
     /// Install the bundled Nerd Font symbols for Windows Terminal (Windows only)
     #[arg(long = "install-font")]
     pub install_font: bool,

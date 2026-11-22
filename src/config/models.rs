@@ -55,7 +55,7 @@ impl BuiltinModelFamily {
     /// backtracking prevents date digits from being captured as minor version numbers.
     fn new(keyword: &str, display_prefix: &str, context_limit: u32) -> Self {
         let pattern = format!(
-            r"(?:(?P<pre_major>\d{{1,2}})(?:-(?P<pre_minor>\d{{1,2}}))?-{kw}|{kw}-(?P<post_major>\d{{1,2}})(?:-(?P<post_minor>\d{{1,2}}))?)(?:-\d{{3,}}|-[a-z]|\[|$)",
+            r"(?:(?P<pre_major>\d{{1,2}})(?:[.-](?P<pre_minor>\d{{1,2}}))?-{kw}|{kw}-(?P<post_major>\d{{1,2}})(?:[.-](?P<post_minor>\d{{1,2}}))?)(?:-\d{{3,}}|-[a-z]|\[|@|:|$)",
             kw = keyword
         );
         Self {
@@ -182,7 +182,7 @@ impl ModelConfig {
     ///   3. `native_limit` reported by Claude Code (absent on old CLI versions)
     ///   4. Built-in Claude families
     ///   5. Default (200k)
-    fn resolve(
+    pub(crate) fn resolve(
         &self,
         model_id: &str,
         native_limit: Option<u32>,

@@ -12,32 +12,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Handle Claude Code patcher
-    if let Some(claude_path) = cli.patch {
-        use ccometixline::utils::ClaudeCodePatcher;
-
-        println!("🔧 Claude Code Context Warning Disabler");
-        println!("Target file: {}", claude_path);
-
-        // Create backup in same directory
-        let backup_path = format!("{}.backup", claude_path);
-        std::fs::copy(&claude_path, &backup_path)?;
-        println!("📦 Created backup: {}", backup_path);
-
-        // Load and patch
-        let mut patcher = ClaudeCodePatcher::new(&claude_path)?;
-
-        println!("\n🔄 Applying patches...");
-        let results = patcher.apply_all_patches();
-        patcher.save()?;
-
-        ClaudeCodePatcher::print_summary(&results);
-        println!("💡 To restore warnings, replace your cli.js with the backup file:");
-        println!("   cp {} {}", backup_path, claude_path);
-
-        return Ok(());
-    }
-
     if cli.install_font {
         if let Err(err) = ccometixline::utils::font_installer::install() {
             eprintln!("❌ {}", err);
@@ -75,9 +49,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Collect segment data
     let segments_data = collect_all_segments(&config, &input);
 
-    // Render statusline
+    // Render statusline (auto-wraps onto multiple lines when terminal narrows)
     let generator = StatusLineGenerator::new(config);
-    let statusline = generator.generate(segments_data);
+    let statusline =
+        generator.generate_with_width(segments_data, StatusLineGenerator::terminal_width_budget());
 
     println!("{}", statusline);
 

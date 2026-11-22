@@ -7,12 +7,14 @@ A high-performance Claude Code statusline tool written in Rust with Git integrat
 ![Language:Rust](https://img.shields.io/static/v1?label=Language&message=Rust&color=orange&style=flat-square)
 ![License:MIT](https://img.shields.io/static/v1?label=License&message=MIT&color=blue&style=flat-square)
 
-> **Fork notice** — this is a maintained fork of [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine) (based on v1.1.2), published to npm as `@yatotm/ccline`. Changes on top of upstream:
-> - **Usage segment** shows both 7-day and 5-hour utilization (`7d% 5h%`).
-> - **Context window** uses the `context_window.context_window_size` that Claude Code (≥ 2.0.37) reports, so models running with 1M context are detected even without the `[1m]` suffix; older CLIs keep the suffix-based logic. Fable/Mythos default to 1M.
+> **Fork notice** — this is a maintained fork of [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine) (based on v1.1.2), published to npm as `@yatotm/ccline`. Changes on top of upstream v1:
+> - **Usage segment** shows both 7-day and 5-hour utilization (`7d% 5h%`) via `/api/oauth/usage` for cross-device accuracy, with strict fail-closed `settings.json` / `settings.local.json` proxy handling (including `socks5`), 429 backoff, and real Claude Code version User-Agent.
+> - **Context window** uses native `context_window` telemetry (`context_window_size`, `current_usage`, `used_percentage`) with 1M detection, Fable/Mythos defaults, and dynamic warning/critical colors (`≥60%` yellow, `≥80%` red).
+> - **Prompt Cache & Claude Code 2.1.x telemetry**: new `Cache` segment showing cache TTL countdown and hit ratio; `Model` shows reasoning effort (`Low`/`Med`/`High`/`xHigh`/`Max`), fast mode, and active agent; `Git` shows worktree badges (and uses a single `git status --porcelain=v2 --branch` call with `CREATE_NO_WINDOW` on Windows); `Session` shows `/rename` session names; `OutputStyle` shows Vim mode.
+> - **Adaptive multi-line wrap**: automatically wraps cleanly between segments onto two or more lines when the terminal (`COLUMNS`) is too narrow.
 > - **Windows icons**: with the stock cmd/PowerShell fonts (no Nerd Font installed) icons fall back to the theme's emoji variants instead of showing `?`; with a Nerd Font installed, Material Design glyphs outside the BMP are swapped for BMP equivalents. Override detection with `CCLINE_NERD_FONT=1` / `0`. `ccline --install-font` installs a bundled Nerd Font symbols font for Windows Terminal.
 > - **Default config** is the `cometix` theme with every segment enabled.
-> - Accepts `model` as a bare string (upstream #118 crash on newer Claude Code).
+> - Lenient per-field JSON deserialization (accepts `model` as bare string, float durations, null/missing fields).
 
 ## Screenshots
 
@@ -208,20 +210,10 @@ ccline --theme powerline-dark
 ccline --theme my-custom-theme
 ```
 
-### Claude Code Enhancement
-
-```bash
-# Disable context warnings and enable verbose mode
-ccline --patch /path/to/claude-code/cli.js
-
-# Example for common installation
-ccline --patch ~/.local/share/fnm/node-versions/v24.4.1/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js
-```
-
 ## Default Segments
 
 Fresh installs use the `cometix` theme (Nerd Font icons) with every segment enabled:
-`Model | Directory | Git | Context Window | Usage | Cost | Session | Output Style`
+`Model | Directory | Git | Context Window | Cache | Usage | Cost | Session | Output Style`
 
 ### Git Status Indicators
 

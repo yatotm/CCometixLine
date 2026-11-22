@@ -20,6 +20,7 @@ fn default_config_enables_every_segment_in_order() {
             SegmentId::Directory,
             SegmentId::Git,
             SegmentId::ContextWindow,
+            SegmentId::Cache,
             SegmentId::Usage,
             SegmentId::Cost,
             SegmentId::Session,

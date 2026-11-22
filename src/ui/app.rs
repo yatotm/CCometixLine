@@ -72,16 +72,7 @@ impl App {
         }
 
         // Load config
-        let mut config = Config::load().unwrap_or_else(|_| Config::default());
-
-        // If a theme is specified, reload it to get the latest changes
-        if !config.theme.is_empty() && config.theme != "default" {
-            if let Ok(theme_config) =
-                crate::ui::themes::ThemePresets::load_theme_from_file(&config.theme)
-            {
-                config = theme_config;
-            }
-        }
+        let config = Config::load().unwrap_or_else(|_| Config::default());
 
         // Terminal setup
         enable_raw_mode()?;
@@ -501,6 +492,7 @@ impl App {
                         SegmentId::Directory => "Directory",
                         SegmentId::Git => "Git",
                         SegmentId::ContextWindow => "Context Window",
+                        SegmentId::Cache => "Cache",
                         SegmentId::Usage => "Usage",
                         SegmentId::Cost => "Cost",
                         SegmentId::Session => "Session",
@@ -528,6 +520,7 @@ impl App {
                                 SegmentId::Directory => "Directory",
                                 SegmentId::Git => "Git",
                                 SegmentId::ContextWindow => "Context Window",
+                                SegmentId::Cache => "Cache",
                                 SegmentId::Usage => "Usage",
                                 SegmentId::Cost => "Cost",
                                 SegmentId::Session => "Session",
