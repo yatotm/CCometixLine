@@ -170,10 +170,9 @@ mod tests {
 
     #[test]
     fn hides_when_caching_not_observed() {
-        let input: InputData = serde_json::from_str(
-            r#"{"prompt_cache": {"caching_observed": false, "warm": false}}"#,
-        )
-        .unwrap();
+        let input: InputData =
+            serde_json::from_str(r#"{"prompt_cache": {"caching_observed": false, "warm": false}}"#)
+                .unwrap();
         let res = CacheSegment::new().collect_at(&input, 1_700_000_000);
         assert!(res.is_none());
     }

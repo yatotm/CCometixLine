@@ -403,8 +403,7 @@ mod tests {
 
     #[test]
     fn extracts_proxy_case_insensitively_with_priority() {
-        let both =
-            r#"{"env":{"HTTPS_PROXY":"http://127.0.0.1:7890","HTTP_PROXY":"http://127.0.0.1:8080"}}"#;
+        let both = r#"{"env":{"HTTPS_PROXY":"http://127.0.0.1:7890","HTTP_PROXY":"http://127.0.0.1:8080"}}"#;
         assert_eq!(
             UsageSegment::extract_proxy_from_json(both).as_deref(),
             Some("http://127.0.0.1:7890")
