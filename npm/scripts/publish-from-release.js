@@ -102,6 +102,20 @@ function download(url, dest, redirectsLeft = 5) {
   });
 }
 
+function isPublished(npm, name, version) {
+  const existing = capture(npm, ['view', `${name}@${version}`, 'version']);
+  return existing === version;
+}
+
+function publishPackage(npm, cwd, name, version, publishArgs, dryRun) {
+  if (!dryRun && isPublished(npm, name, version)) {
+    console.log(`\n⏭️  Skipping ${name}@${version} (already published)`);
+    return;
+  }
+  console.log(`\n🚀 Publishing ${name}@${version}${dryRun ? ' (dry run)' : ''}`);
+  run(npm, publishArgs, { cwd });
+}
+
 function cargoVersion() {
   const cargo = fs.readFileSync(path.join(ROOT, 'Cargo.toml'), 'utf8');
   const match = /^version\s*=\s*"([^"]+)"/m.exec(cargo);
@@ -151,18 +165,16 @@ async function main() {
     console.log(`📦 ${platform}: ${target}`);
   }
 
-  // 5. Publish platform packages first, then the main package
+  // 5. Publish platform packages first, then the main package (skips already-published packages so retries can resume)
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   for (const platform of Object.keys(PLATFORMS)) {
     const cwd = path.join(PUBLISH_DIR, platform);
     const name = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8')).name;
-    console.log(`\n🚀 Publishing ${name}@${version}${dryRun ? ' (dry run)' : ''}`);
-    run(npm, publishArgs, { cwd });
+    publishPackage(npm, cwd, name, version, publishArgs, dryRun);
   }
 
   const mainDir = path.join(PUBLISH_DIR, 'main');
-  console.log(`\n🚀 Publishing ${MAIN_PACKAGE.name}@${version}${dryRun ? ' (dry run)' : ''}`);
-  run(npm, publishArgs, { cwd: mainDir });
+  publishPackage(npm, mainDir, MAIN_PACKAGE.name, version, publishArgs, dryRun);
 
   console.log(`\n🎉 Done. Install with: npm install -g ${MAIN_PACKAGE.name}`);
 }
