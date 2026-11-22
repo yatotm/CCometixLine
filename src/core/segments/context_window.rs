@@ -168,10 +168,8 @@ fn read_tail_lines(path: &Path, max_bytes: u64) -> Option<(Vec<String>, bool)> {
 
     let slice = if truncated {
         // Drop the leading partial line after seeking into the middle of the file.
-        match buf.iter().position(|&b| b == b'\n') {
-            Some(pos) => &buf[pos + 1..],
-            None => return None,
-        }
+        let pos = buf.iter().position(|&b| b == b'\n')?;
+        &buf[pos + 1..]
     } else {
         &buf[..]
     };

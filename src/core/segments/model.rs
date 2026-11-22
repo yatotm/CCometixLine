@@ -94,10 +94,8 @@ impl ModelSegment {
             "max" => "Max".to_string(),
             _ => {
                 let mut chars = lower.chars();
-                match chars.next() {
-                    Some(first) => first.to_uppercase().chain(chars).collect(),
-                    None => return None,
-                }
+                let first = chars.next()?;
+                first.to_uppercase().chain(chars).collect()
             }
         };
         Some(formatted)
