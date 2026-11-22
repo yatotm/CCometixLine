@@ -51,8 +51,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Render statusline (auto-wraps onto multiple lines when terminal narrows)
     let generator = StatusLineGenerator::new(config);
-    let statusline =
-        generator.generate_with_width(segments_data, StatusLineGenerator::terminal_width_budget());
+    let budget = StatusLineGenerator::terminal_width_budget();
+    let statusline = generator.generate_with_width(segments_data, budget);
 
     println!("{}", statusline);
 

@@ -421,7 +421,8 @@ mod tests {
             Some("socks5h://127.0.0.1:1080")
         );
 
-        assert_eq!(UsageSegment::extract_proxy_from_json(r#"{"env":{}}"#), None);
+        let empty = r#"{"env":{}}"#;
+        assert_eq!(UsageSegment::extract_proxy_from_json(empty), None);
     }
 
     #[test]

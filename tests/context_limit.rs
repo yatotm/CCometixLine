@@ -360,11 +360,8 @@ fn model_segment_does_not_duplicate_1m_suffix() {
 #[test]
 fn model_regex_recognizes_bedrock_vertex_and_dotted_versions() {
     let cfg = config();
-    assert_eq!(
-        cfg.get_display_name("us.anthropic.claude-sonnet-4-5-20250929-v1:0")
-            .as_deref(),
-        Some("Sonnet 4.5")
-    );
+    let bedrock = cfg.get_display_name("us.anthropic.claude-sonnet-4-5-20250929-v1:0");
+    assert_eq!(bedrock.as_deref(), Some("Sonnet 4.5"));
     assert_eq!(
         cfg.get_display_name("claude-sonnet-5@20250929").as_deref(),
         Some("Sonnet 5")
@@ -463,9 +460,7 @@ fn session_and_output_style_show_session_name_float_duration_and_vim_mode() {
     let session = SessionSegment::new().collect(&input).expect("session data");
     assert_eq!(session.primary, "auth-refactor · 2m5s");
 
-    let style = OutputStyleSegment::new()
-        .collect(&input)
-        .expect("output style data");
+    let style = OutputStyleSegment::new().collect(&input).expect("output style");
     assert_eq!(style.primary, "default");
     assert_eq!(style.secondary, "[NORMAL]");
 }

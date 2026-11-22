@@ -100,10 +100,8 @@ where
     D: serde::Deserializer<'de>,
 {
     let value = serde_json::Value::deserialize(deserializer)?;
-    Ok(serde_json::from_value::<Option<T>>(value)
-        .ok()
-        .flatten()
-        .unwrap_or_default())
+    let parsed = serde_json::from_value::<Option<T>>(value).ok().flatten();
+    Ok(parsed.unwrap_or_default())
 }
 
 // Data structures compatible with existing main.rs

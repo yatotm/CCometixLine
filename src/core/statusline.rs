@@ -116,7 +116,8 @@ impl StatusLineGenerator {
             };
 
             if i > row_start && row_width + added_w > budget {
-                lines.push(self.join_row(&output[row_start..i], &rendered_configs[row_start..i]));
+                let row = self.join_row(&output[row_start..i], &rendered_configs[row_start..i]);
+                lines.push(row);
                 row_start = i;
                 row_width = seg_w;
             } else {
@@ -124,7 +125,8 @@ impl StatusLineGenerator {
             }
         }
 
-        lines.push(self.join_row(&output[row_start..], &rendered_configs[row_start..]));
+        let row = self.join_row(&output[row_start..], &rendered_configs[row_start..]);
+        lines.push(row);
         lines.join("\n")
     }
 

@@ -205,11 +205,7 @@ fn try_parse_transcript_file(path: &Path) -> Option<u32> {
 
 fn find_usage_in_lines(lines: &[String], path: &Path) -> Option<u32> {
     // Check if the last non-empty line is a summary
-    let last_line = lines
-        .iter()
-        .rev()
-        .map(|l| l.trim())
-        .find(|l| !l.is_empty())?;
+    let last_line = lines.iter().rev().find(|l| !l.trim().is_empty())?.trim();
     if let Ok(entry) = serde_json::from_str::<TranscriptEntry>(last_line) {
         if entry.r#type.as_deref() == Some("summary") {
             // Handle summary case: find usage by leafUuid

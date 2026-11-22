@@ -117,9 +117,8 @@ mod tests {
         )
         .unwrap();
 
-        let data = CacheSegment::new()
-            .collect_at(&input, 1_700_000_480)
-            .expect("cache data");
+        let seg = CacheSegment::new();
+        let data = seg.collect_at(&input, 1_700_000_480).expect("cache data");
         assert_eq!(data.primary, "42m");
         assert_eq!(data.secondary, "· 97%");
         assert!(data.metadata.get("severity").is_none());
@@ -127,6 +126,7 @@ mod tests {
 
     #[test]
     fn warns_when_expiring_soon_or_cold_and_hides_first_turn_hit_ratio() {
+        let seg = CacheSegment::new();
         let expiring: InputData = serde_json::from_str(
             r#"{
                 "prompt_cache": {
@@ -140,9 +140,7 @@ mod tests {
         )
         .unwrap();
 
-        let data = CacheSegment::new()
-            .collect_at(&expiring, 1_700_000_000)
-            .expect("expiring cache");
+        let data = seg.collect_at(&expiring, 1_700_000_000).expect("expiring cache");
         assert_eq!(data.primary, "45s");
         assert_eq!(data.secondary, "");
         assert_eq!(
@@ -161,9 +159,7 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let data = CacheSegment::new()
-            .collect_at(&cold, 1_700_000_000)
-            .expect("cold cache");
+        let data = seg.collect_at(&cold, 1_700_000_000).expect("cold cache");
         assert_eq!(data.primary, "cold");
         assert_eq!(data.secondary, "· 80%");
         assert_eq!(
@@ -178,6 +174,7 @@ mod tests {
             r#"{"prompt_cache": {"caching_observed": false, "warm": false}}"#,
         )
         .unwrap();
-        assert!(CacheSegment::new().collect_at(&input, 1_700_000_000).is_none());
+        let res = CacheSegment::new().collect_at(&input, 1_700_000_000);
+        assert!(res.is_none());
     }
 }
