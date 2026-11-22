@@ -279,7 +279,8 @@ fn context_window_uses_used_percentage_when_current_usage_missing() {
 
 #[test]
 fn context_window_does_not_leak_previous_session_history_on_fresh_session() {
-    let dir = std::env::temp_dir().join(format!("ccline-cw-fresh-{}", std::process::id()));
+    let dir_name = format!("ccline-cw-fresh-{}", std::process::id());
+    let dir = std::env::temp_dir().join(dir_name);
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
 
@@ -310,7 +311,8 @@ fn context_window_does_not_leak_previous_session_history_on_fresh_session() {
 
 #[test]
 fn context_window_parses_large_transcript_tail_for_legacy_cli() {
-    let dir = std::env::temp_dir().join(format!("ccline-cw-tail-{}", std::process::id()));
+    let dir_name = format!("ccline-cw-tail-{}", std::process::id());
+    let dir = std::env::temp_dir().join(dir_name);
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
 
@@ -362,14 +364,10 @@ fn model_regex_recognizes_bedrock_vertex_and_dotted_versions() {
     let cfg = config();
     let bedrock = cfg.get_display_name("us.anthropic.claude-sonnet-4-5-20250929-v1:0");
     assert_eq!(bedrock.as_deref(), Some("Sonnet 4.5"));
-    assert_eq!(
-        cfg.get_display_name("claude-sonnet-5@20250929").as_deref(),
-        Some("Sonnet 5")
-    );
-    assert_eq!(
-        cfg.get_display_name("anthropic/claude-opus-4.1").as_deref(),
-        Some("Opus 4.1")
-    );
+    let vertex = cfg.get_display_name("claude-sonnet-5@20250929");
+    assert_eq!(vertex.as_deref(), Some("Sonnet 5"));
+    let dotted = cfg.get_display_name("anthropic/claude-opus-4.1");
+    assert_eq!(dotted.as_deref(), Some("Opus 4.1"));
 }
 
 #[test]
@@ -457,10 +455,10 @@ fn session_and_output_style_show_session_name_float_duration_and_vim_mode() {
             "vim": {"mode": "NORMAL"}
         }"#,
     );
-    let session = SessionSegment::new().collect(&input).expect("session data");
+    let session = SessionSegment::new().collect(&input).unwrap();
     assert_eq!(session.primary, "auth-refactor · 2m5s");
 
-    let style = OutputStyleSegment::new().collect(&input).expect("output style");
+    let style = OutputStyleSegment::new().collect(&input).unwrap();
     assert_eq!(style.primary, "default");
     assert_eq!(style.secondary, "[NORMAL]");
 }

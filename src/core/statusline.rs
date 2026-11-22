@@ -101,7 +101,8 @@ impl StatusLineGenerator {
             return single_line;
         }
 
-        let sep_width = visible_width(&icons::platform_safe(&self.config.style.separator));
+        let sep = icons::platform_safe(&self.config.style.separator);
+        let sep_width = visible_width(&sep);
 
         let mut lines = Vec::new();
         let mut row_start = 0;
@@ -672,7 +673,7 @@ mod tests {
             .iter()
             .take(4)
             .cloned()
-            .zip(["Opus 4.6 1M", "my-project", "main ✓", "42% · 84k tokens"])
+            .zip(["Opus 4.6", "project", "main ✓", "42% · 84k"])
             .map(|(cfg, text)| {
                 (
                     cfg,
@@ -690,11 +691,11 @@ mod tests {
         assert!(!wide.contains('\n'));
 
         // Narrow terminal wraps cleanly between segments without trailing separators
-        let narrow = generator.generate_with_width(segments, Some(40));
+        let narrow = generator.generate_with_width(segments, Some(30));
         let rows: Vec<&str> = narrow.lines().collect();
         assert!(rows.len() >= 2);
         for row in rows {
-            assert!(visible_width(row) <= 40);
+            assert!(visible_width(row) <= 30);
             assert!(!row.trim_end().ends_with('|'));
         }
     }

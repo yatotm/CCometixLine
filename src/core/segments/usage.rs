@@ -275,9 +275,10 @@ impl UsageSegment {
         };
 
         let url = format!("{}/api/oauth/usage", self.api_base_url);
+        let auth = format!("Bearer {}", token);
         let response = agent
             .get(&url)
-            .header("Authorization", &format!("Bearer {}", token))
+            .header("Authorization", auth.as_str())
             .header("anthropic-beta", "oauth-2025-04-20")
             .header("User-Agent", user_agent)
             .config()
@@ -427,7 +428,8 @@ mod tests {
 
     #[test]
     fn settings_local_overrides_settings_json_proxy() {
-        let dir = std::env::temp_dir().join(format!("ccline-proxy-test-{}", std::process::id()));
+        let dir_name = format!("ccline-proxy-test-{}", std::process::id());
+        let dir = std::env::temp_dir().join(dir_name);
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
 

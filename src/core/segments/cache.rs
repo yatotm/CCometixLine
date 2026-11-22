@@ -118,10 +118,10 @@ mod tests {
         .unwrap();
 
         let seg = CacheSegment::new();
-        let data = seg.collect_at(&input, 1_700_000_480).expect("cache data");
+        let data = seg.collect_at(&input, 1_700_000_480).unwrap();
         assert_eq!(data.primary, "42m");
         assert_eq!(data.secondary, "· 97%");
-        assert!(data.metadata.get("severity").is_none());
+        assert!(!data.metadata.contains_key("severity"));
     }
 
     #[test]
@@ -140,7 +140,7 @@ mod tests {
         )
         .unwrap();
 
-        let data = seg.collect_at(&expiring, 1_700_000_000).expect("expiring cache");
+        let data = seg.collect_at(&expiring, 1_700_000_000).unwrap();
         assert_eq!(data.primary, "45s");
         assert_eq!(data.secondary, "");
         assert_eq!(
@@ -159,7 +159,7 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let data = seg.collect_at(&cold, 1_700_000_000).expect("cold cache");
+        let data = seg.collect_at(&cold, 1_700_000_000).unwrap();
         assert_eq!(data.primary, "cold");
         assert_eq!(data.secondary, "· 80%");
         assert_eq!(

@@ -137,7 +137,8 @@ fn resolve_usage(input: &InputData, context_limit: u32) -> Option<(f64, u32)> {
         }
 
         if let Some(pct) = cw.used_percentage {
-            let tokens = ((pct / 100.0) * context_limit as f64).round().max(0.0) as u32;
+            let raw = (pct / 100.0) * context_limit as f64;
+            let tokens = raw.round().max(0.0) as u32;
             return Some((pct, tokens));
         }
     }

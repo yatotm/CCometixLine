@@ -45,8 +45,13 @@ impl GitSegment {
         }
 
         let mut cmd = Command::new("git");
-        cmd.args(["--no-optional-locks", "status", "--porcelain=v2", "--branch"])
-            .current_dir(working_dir);
+        cmd.args([
+            "--no-optional-locks",
+            "status",
+            "--porcelain=v2",
+            "--branch",
+        ]);
+        cmd.current_dir(working_dir);
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
