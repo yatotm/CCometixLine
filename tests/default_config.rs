@@ -60,6 +60,16 @@ fn default_config_keeps_segment_options() {
         git.options.get("show_sha").and_then(|v| v.as_bool()),
         Some(false)
     );
+
+    let session = config
+        .segments
+        .iter()
+        .find(|s| s.id == SegmentId::Session)
+        .expect("session segment");
+    assert_eq!(
+        session.options.get("show_name").and_then(|v| v.as_bool()),
+        Some(true)
+    );
 }
 
 #[test]

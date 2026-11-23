@@ -462,3 +462,22 @@ fn session_and_output_style_show_session_name_float_duration_and_vim_mode() {
     assert_eq!(style.primary, "default");
     assert_eq!(style.secondary, "[NORMAL]");
 }
+
+#[test]
+fn session_show_name_option_hides_session_name() {
+    let input = parse(
+        r#"{
+            "session_name": "auth-refactor",
+            "cost": {"total_duration_ms": 125400.5, "total_lines_added": 10, "total_lines_removed": 2}
+        }"#,
+    );
+    let session = SessionSegment::new().with_name(false).collect(&input);
+    let data = session.unwrap();
+    assert_eq!(data.primary, "2m5s");
+    assert!(!data.secondary.is_empty());
+    assert!(!data.metadata.contains_key("session_name"));
+
+    let name_only = parse(r#"{"session_name": "auth-refactor"}"#);
+    let hidden = SessionSegment::new().with_name(false).collect(&name_only);
+    assert!(hidden.is_none());
+}

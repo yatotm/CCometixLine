@@ -159,7 +159,11 @@ pub fn session_segment() -> SegmentConfig {
             background: None,
         },
         styles: TextStyleConfig::default(),
-        options: HashMap::new(),
+        options: {
+            let mut opts = HashMap::new();
+            opts.insert("show_name".to_string(), serde_json::Value::Bool(true));
+            opts
+        },
     }
 }
 

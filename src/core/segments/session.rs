@@ -4,12 +4,24 @@ use std::collections::HashMap;
 
 const MAX_SESSION_NAME_CHARS: usize = 20;
 
-#[derive(Default)]
-pub struct SessionSegment;
+pub struct SessionSegment {
+    show_name: bool,
+}
+
+impl Default for SessionSegment {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl SessionSegment {
     pub fn new() -> Self {
-        Self
+        Self { show_name: true }
+    }
+
+    pub fn with_name(mut self, show_name: bool) -> Self {
+        self.show_name = show_name;
+        self
     }
 
     fn format_duration(ms: u64) -> String {
@@ -54,12 +66,16 @@ impl Segment for SessionSegment {
         let duration_ms = cost_data
             .and_then(|c| c.total_duration_ms)
             .map(|ms| ms.max(0.0).round() as u64);
-        let session_name = input
-            .session_name
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(Self::truncate_name);
+        let session_name = if self.show_name {
+            input
+                .session_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(Self::truncate_name)
+        } else {
+            None
+        };
 
         let primary = match (session_name.as_deref(), duration_ms) {
             (Some(name), Some(ms)) => format!("{} · {}", name, Self::format_duration(ms)),

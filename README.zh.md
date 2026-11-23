@@ -10,7 +10,7 @@
 > **Fork 说明** — 本仓库是 [Haleclipse/CCometixLine](https://github.com/Haleclipse/CCometixLine)（基于 v1.1.2）的维护分支，npm 包名为 `@yatotm/ccline`。相对上游 v1 的改动：
 > - **用量段** 通过 `/api/oauth/usage` 同时显示七天和五小时用量（`7d% 5h%`），确保多端使用准确；严格遵循 `settings.json` / `settings.local.json` 代理配置（支持 `socks5`，代理异常 fail-closed 绝不直连），内置 429 退避，并使用当前 Claude Code 真实版本号作为 User-Agent。
 > - **上下文窗口** 优先使用 Claude Code 原生 `context_window` 字段（`context_window_size`、`current_usage`、`used_percentage`），支持 1M 自动识别、Fable/Mythos 默认 1M，以及阈值动态变色（`≥60%` 黄色、`≥80%` 红色）。
-> - **Prompt Cache 与 Claude Code 2.1.x 新字段**：新增 `Cache` 段显示缓存剩余保鲜时间与命中率；`Model` 段显示推理强度（`Low`/`Med`/`High`/`xHigh`/`Max`）、fast mode 与当前子代理；`Git` 段支持 worktree 标记并合并为单次 `git status --porcelain=v2 --branch`（Windows 隐藏黑窗）；`Session` 显示 `/rename` 会话名；`OutputStyle` 显示 Vim 模式。
+> - **Prompt Cache 与 Claude Code 2.1.x 新字段**：新增 `Cache` 段显示缓存剩余保鲜时间与命中率；`Model` 段显示推理强度（`Low`/`Med`/`High`/`xHigh`/`Max`）、fast mode 与当前子代理；`Git` 段支持 worktree 标记并合并为单次 `git status --porcelain=v2 --branch`（Windows 隐藏黑窗）；`Session` 显示 `/rename` 会话名（可在配置中通过 `show_name = false` 关闭）；`OutputStyle` 显示 Vim 模式。
 > - **窄终端按需双行/多行显示**：读取 `COLUMNS` 并在终端变窄时按段优雅换行，宽屏保持单行不变。
 > - **Windows 图标**：使用系统自带字体（未安装 Nerd Font）的 cmd/PowerShell 下，图标自动退回主题的 emoji 版本而不是显示 `?`；已安装 Nerd Font 时，把 BMP 之外的 Material Design 图标替换为 BMP 内等价图标。可用 `CCLINE_NERD_FONT=1` / `0` 强制指定；`ccline --install-font` 可为 Windows Terminal 安装内置的 Nerd Font 符号字体。
 > - **默认配置** 为 `cometix` 主题且所有段落启用。

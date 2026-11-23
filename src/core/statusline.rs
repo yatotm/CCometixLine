@@ -614,7 +614,12 @@ pub fn collect_all_segments(
                 segment.collect(input)
             }
             SegmentId::Session => {
-                let segment = SessionSegment::new();
+                let show_name = segment_config
+                    .options
+                    .get("show_name")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(true);
+                let segment = SessionSegment::new().with_name(show_name);
                 segment.collect(input)
             }
             SegmentId::OutputStyle => {
@@ -721,5 +726,22 @@ mod tests {
         let rendered = generator.render_segment_raw(&cw_cfg, &data);
         // ANSI bright red (c16: 9 -> code 91)
         assert!(rendered.contains("91m"));
+    }
+
+    #[test]
+    fn collect_all_segments_respects_session_show_name_option() {
+        let mut config = ThemePresets::get_cometix();
+        for seg in &mut config.segments {
+            seg.enabled = seg.id == crate::config::SegmentId::Session;
+            if seg.id == crate::config::SegmentId::Session {
+                let opts = &mut seg.options;
+                opts.insert("show_name".to_string(), serde_json::Value::Bool(false));
+            }
+        }
+        let raw = r#"{"session_name": "my-task", "cost": {"total_duration_ms": 65000}}"#;
+        let input: crate::config::InputData = serde_json::from_str(raw).unwrap();
+        let collected = collect_all_segments(&config, &input);
+        assert_eq!(collected.len(), 1);
+        assert_eq!(collected[0].1.primary, "1m5s");
     }
 }
