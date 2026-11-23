@@ -7,7 +7,9 @@ use crate::ui::components::{
     preview::PreviewComponent,
     segment_list::{FieldSelection, Panel, SegmentListComponent},
     separator_editor::SeparatorEditorComponent,
-    settings::SettingsComponent,
+    settings::{
+        effective_options, format_option_raw, OptionKind, SettingsComponent, SettingsViewState,
+    },
     theme_selector::ThemeSelectorComponent,
 };
 use crossterm::{
@@ -29,6 +31,8 @@ pub struct App {
     selected_segment: usize,
     selected_panel: Panel,
     selected_field: FieldSelection,
+    options_expanded: bool,
+    editing_option: Option<String>,
     should_quit: bool,
     color_picker: ColorPickerComponent,
     icon_selector: IconSelectorComponent,
@@ -49,6 +53,8 @@ impl App {
             selected_segment: 0,
             selected_panel: Panel::SegmentList,
             selected_field: FieldSelection::Enabled,
+            options_expanded: false,
+            editing_option: None,
             should_quit: false,
             color_picker: ColorPickerComponent::new(),
             icon_selector: IconSelectorComponent::new(),
@@ -174,6 +180,14 @@ impl App {
                         }
                         _ => {}
                     }
+                } else if app.editing_option.is_some() {
+                    match key.code {
+                        KeyCode::Esc => app.cancel_option_edit(),
+                        KeyCode::Enter => app.commit_option_edit(),
+                        KeyCode::Backspace => app.backspace_option_edit(),
+                        KeyCode::Char(c) => app.input_option_char(c),
+                        _ => {}
+                    }
                 } else {
                     // Handle main app events
                     match key.code {
@@ -212,6 +226,8 @@ impl App {
                             }
                         }
                         KeyCode::Enter => app.toggle_current(),
+                        KeyCode::Right => app.expand_options(),
+                        KeyCode::Left => app.collapse_options(),
                         KeyCode::Tab => app.switch_panel(),
                         KeyCode::Char('1') => app.switch_to_theme("default"),
                         KeyCode::Char('2') => app.switch_to_theme("minimal"),
@@ -277,7 +293,9 @@ impl App {
 
     fn calculate_help_height(&self, total_width: u16) -> u16 {
         // Use same help_items as in help.render
-        let help_items = if self.color_picker.is_open {
+        let help_items = if self.editing_option.is_some() {
+            vec!["[Enter] Apply", "[Esc] Cancel"]
+        } else if self.color_picker.is_open {
             vec![
                 "[↑↓] Navigate",
                 "[Tab] Mode",
@@ -413,14 +431,14 @@ impl App {
         );
 
         // Settings panel
-        self.settings.render(
-            f,
-            content_layout[1],
-            &self.config,
-            self.selected_segment,
-            &self.selected_panel,
-            &self.selected_field,
-        );
+        let settings_state = SettingsViewState {
+            selected_segment: self.selected_segment,
+            selected_panel: &self.selected_panel,
+            selected_field: &self.selected_field,
+            options_expanded: self.options_expanded,
+            editing_option: self.editing_option.as_deref(),
+        };
+        self.settings.render(f, content_layout[1], &self.config, &settings_state);
 
         // Help
         self.help.render(
@@ -429,6 +447,7 @@ impl App {
             self.status_message.as_deref(),
             self.color_picker.is_open,
             self.icon_selector.is_open,
+            self.editing_option.is_some(),
         );
 
         // Render popups on top
@@ -446,6 +465,49 @@ impl App {
         }
     }
 
+    fn settings_fields(&self) -> Vec<FieldSelection> {
+        let mut fields = vec![
+            FieldSelection::Enabled,
+            FieldSelection::Icon,
+            FieldSelection::IconColor,
+            FieldSelection::TextColor,
+            FieldSelection::BackgroundColor,
+            FieldSelection::TextStyle,
+            FieldSelection::Options,
+        ];
+        if self.options_expanded {
+            if let Some(segment) = self.config.segments.get(self.selected_segment) {
+                let count = effective_options(segment).len();
+                for idx in 0..count {
+                    fields.push(FieldSelection::OptionItem(idx));
+                }
+            }
+        }
+        fields
+    }
+
+    fn sync_options_selection(&mut self) {
+        self.editing_option = None;
+        let opt_count = self
+            .config
+            .segments
+            .get(self.selected_segment)
+            .map(|seg| effective_options(seg).len())
+            .unwrap_or(0);
+        if opt_count == 0 {
+            self.options_expanded = false;
+            if matches!(self.selected_field, FieldSelection::OptionItem(_)) {
+                self.selected_field = FieldSelection::Options;
+            }
+        } else if let FieldSelection::OptionItem(idx) = self.selected_field {
+            if !self.options_expanded {
+                self.selected_field = FieldSelection::Options;
+            } else if idx >= opt_count {
+                self.selected_field = FieldSelection::OptionItem(opt_count - 1);
+            }
+        }
+    }
+
     fn move_selection(&mut self, delta: i32) {
         match self.selected_panel {
             Panel::SegmentList => {
@@ -454,29 +516,17 @@ impl App {
                     .min((self.config.segments.len() - 1) as i32)
                     as usize;
                 self.selected_segment = new_selection;
+                self.sync_options_selection();
             }
             Panel::Settings => {
-                let field_count = 7; // Enabled, Icon, IconColor, TextColor, TextStyle, BackgroundColor, Options
-                let current_field = match self.selected_field {
-                    FieldSelection::Enabled => 0i32,
-                    FieldSelection::Icon => 1,
-                    FieldSelection::IconColor => 2,
-                    FieldSelection::TextColor => 3,
-                    FieldSelection::BackgroundColor => 4,
-                    FieldSelection::TextStyle => 5,
-                    FieldSelection::Options => 6,
-                };
-                let new_field = (current_field + delta).clamp(0, field_count - 1) as usize;
-                self.selected_field = match new_field {
-                    0 => FieldSelection::Enabled,
-                    1 => FieldSelection::Icon,
-                    2 => FieldSelection::IconColor,
-                    3 => FieldSelection::TextColor,
-                    4 => FieldSelection::BackgroundColor,
-                    5 => FieldSelection::TextStyle,
-                    6 => FieldSelection::Options,
-                    _ => FieldSelection::Enabled,
-                };
+                let fields = self.settings_fields();
+                let current_idx = fields
+                    .iter()
+                    .position(|f| f == &self.selected_field)
+                    .unwrap_or(0) as i32;
+                let max_idx = fields.len().saturating_sub(1) as i32;
+                let new_idx = (current_idx + delta).clamp(0, max_idx) as usize;
+                self.selected_field = fields[new_idx].clone();
             }
         }
     }
@@ -555,12 +605,147 @@ impl App {
                             self.preview.update_preview(&self.config);
                         }
                     }
-                    FieldSelection::Options => {
-                        // TODO: Implement options editor
-                        self.status_message =
-                            Some("Options editor not implemented yet".to_string());
-                    }
+                    FieldSelection::Options => self.toggle_options_expanded(),
+                    FieldSelection::OptionItem(idx) => self.activate_option_item(idx),
                 }
+            }
+        }
+    }
+
+    fn toggle_options_expanded(&mut self) {
+        let opt_count = self
+            .config
+            .segments
+            .get(self.selected_segment)
+            .map(|seg| effective_options(seg).len())
+            .unwrap_or(0);
+        if opt_count == 0 {
+            self.options_expanded = false;
+            self.status_message = Some("No configurable options for this segment".to_string());
+        } else {
+            self.options_expanded = !self.options_expanded;
+            self.sync_options_selection();
+        }
+    }
+
+    fn expand_options(&mut self) {
+        if self.selected_panel == Panel::Settings
+            && self.selected_field == FieldSelection::Options
+            && !self.options_expanded
+        {
+            self.toggle_options_expanded();
+        }
+    }
+
+    fn collapse_options(&mut self) {
+        if self.selected_panel == Panel::Settings
+            && self.options_expanded
+            && matches!(
+                self.selected_field,
+                FieldSelection::Options | FieldSelection::OptionItem(_)
+            )
+        {
+            self.options_expanded = false;
+            self.selected_field = FieldSelection::Options;
+            self.editing_option = None;
+        }
+    }
+
+    fn activate_option_item(&mut self, idx: usize) {
+        let Some(segment) = self.config.segments.get_mut(self.selected_segment) else {
+            return;
+        };
+        let options = effective_options(segment);
+        let Some(item) = options.get(idx) else {
+            return;
+        };
+
+        match item.kind {
+            OptionKind::Bool => {
+                let new_val = !item.value.as_bool().unwrap_or(false);
+                let val = serde_json::Value::Bool(new_val);
+                segment.options.insert(item.key.clone(), val);
+                let state_str = if new_val { "enabled" } else { "disabled" };
+                self.status_message = Some(format!("Option {} {}", item.key, state_str));
+                self.preview.update_preview(&self.config);
+            }
+            OptionKind::Uint | OptionKind::String => {
+                self.editing_option = Some(format_option_raw(&item.value));
+                let msg = format!("Editing {} (Enter to apply, Esc to cancel)", item.key);
+                self.status_message = Some(msg);
+            }
+        }
+    }
+
+    fn input_option_char(&mut self, c: char) {
+        if let FieldSelection::OptionItem(idx) = self.selected_field {
+            let kind = self
+                .config
+                .segments
+                .get(self.selected_segment)
+                .and_then(|seg| effective_options(seg).get(idx).map(|o| o.kind));
+            if kind == Some(OptionKind::Uint) && !c.is_ascii_digit() {
+                return;
+            }
+        }
+        if let Some(buf) = &mut self.editing_option {
+            buf.push(c);
+        }
+    }
+
+    fn backspace_option_edit(&mut self) {
+        if let Some(buf) = &mut self.editing_option {
+            buf.pop();
+        }
+    }
+
+    fn cancel_option_edit(&mut self) {
+        self.editing_option = None;
+        self.status_message = Some("Option edit cancelled".to_string());
+    }
+
+    fn commit_option_edit(&mut self) {
+        let Some(raw) = self.editing_option.clone() else {
+            return;
+        };
+        let FieldSelection::OptionItem(idx) = self.selected_field else {
+            self.editing_option = None;
+            return;
+        };
+        let Some(segment) = self.config.segments.get_mut(self.selected_segment) else {
+            self.editing_option = None;
+            return;
+        };
+        let options = effective_options(segment);
+        let Some(item) = options.get(idx) else {
+            self.editing_option = None;
+            return;
+        };
+
+        let trimmed = raw.trim();
+        match item.kind {
+            OptionKind::Uint => match trimmed.parse::<u64>() {
+                Ok(num) => {
+                    let val = serde_json::Value::from(num);
+                    segment.options.insert(item.key.clone(), val);
+                    self.editing_option = None;
+                    self.status_message = Some(format!("Updated {} = {}", item.key, num));
+                    self.preview.update_preview(&self.config);
+                }
+                Err(_) => {
+                    self.status_message =
+                        Some(format!("Invalid number for {}: '{}'", item.key, trimmed));
+                }
+            },
+            OptionKind::String => {
+                let val = serde_json::Value::String(trimmed.to_string());
+                segment.options.insert(item.key.clone(), val);
+                self.editing_option = None;
+                self.status_message = Some(format!("Updated {} = {}", item.key, trimmed));
+                self.preview.update_preview(&self.config);
+            }
+            OptionKind::Bool => {
+                self.editing_option = None;
             }
         }
     }
@@ -624,6 +809,7 @@ impl App {
     fn switch_to_theme(&mut self, theme_name: &str) {
         self.config = crate::ui::themes::ThemePresets::get_theme(theme_name);
         self.selected_segment = 0;
+        self.sync_options_selection();
         self.preview.update_preview(&self.config);
         self.status_message = Some(format!("Switched to {} theme", theme_name));
     }
@@ -633,6 +819,7 @@ impl App {
         let current_theme = self.config.theme.clone();
         self.config = crate::ui::themes::ThemePresets::get_theme(&current_theme);
         self.selected_segment = 0;
+        self.sync_options_selection();
         self.preview.update_preview(&self.config);
         self.status_message = Some(format!("Reset {} theme to defaults", current_theme));
     }
@@ -698,5 +885,73 @@ impl App {
     fn open_separator_editor(&mut self) {
         self.status_message = Some("Opening separator editor...".to_string());
         self.separator_editor.open(&self.config.style.separator);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::themes::ThemePresets;
+
+    #[test]
+    fn inline_options_expand_toggle_bool_and_edit_uint() {
+        let config = ThemePresets::get_cometix();
+        let session_idx = config
+            .segments
+            .iter()
+            .position(|s| s.id == SegmentId::Session)
+            .unwrap();
+        let usage_idx = config
+            .segments
+            .iter()
+            .position(|s| s.id == SegmentId::Usage)
+            .unwrap();
+        let dir_idx = config
+            .segments
+            .iter()
+            .position(|s| s.id == SegmentId::Directory)
+            .unwrap();
+
+        let mut app = App::new(config);
+        app.selected_segment = session_idx;
+        app.selected_panel = Panel::Settings;
+        app.selected_field = FieldSelection::Options;
+
+        // Expand session options and move into show_name
+        app.toggle_current();
+        assert!(app.options_expanded);
+        app.move_selection(1);
+        assert_eq!(app.selected_field, FieldSelection::OptionItem(0));
+
+        // Toggle show_name from true to false
+        app.toggle_current();
+        let show_name = app.config.segments[session_idx]
+            .options
+            .get("show_name")
+            .and_then(|v| v.as_bool());
+        assert_eq!(show_name, Some(false));
+
+        // Switch to usage and inline-edit cache_duration (index 1)
+        app.selected_segment = usage_idx;
+        app.sync_options_selection();
+        app.selected_field = FieldSelection::OptionItem(1);
+        app.toggle_current();
+        assert_eq!(app.editing_option.as_deref(), Some("180"));
+        app.backspace_option_edit();
+        app.input_option_char('x'); // non-digit ignored for Uint
+        app.input_option_char('5');
+        app.commit_option_edit();
+        assert!(app.editing_option.is_none());
+        let dur = app.config.segments[usage_idx]
+            .options
+            .get("cache_duration")
+            .and_then(|v| v.as_u64());
+        assert_eq!(dur, Some(185));
+
+        // Switching to a segment with no options collapses cleanly
+        app.selected_segment = dir_idx;
+        app.sync_options_selection();
+        assert!(!app.options_expanded);
+        assert_eq!(app.selected_field, FieldSelection::Options);
     }
 }

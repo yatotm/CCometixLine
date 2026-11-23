@@ -113,18 +113,29 @@ impl PreviewComponent {
                         map
                     },
                 },
-                SegmentId::Git => SegmentData {
-                    primary: "master".to_string(),
-                    secondary: "✓".to_string(),
-                    metadata: {
-                        let mut map = HashMap::new();
-                        map.insert("branch".to_string(), "master".to_string());
-                        map.insert("status".to_string(), "Clean".to_string());
-                        map.insert("ahead".to_string(), "0".to_string());
-                        map.insert("behind".to_string(), "0".to_string());
-                        map
-                    },
-                },
+                SegmentId::Git => {
+                    let show_sha = segment_config
+                        .options
+                        .get("show_sha")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    SegmentData {
+                        primary: "master".to_string(),
+                        secondary: if show_sha {
+                            "✓ a1b2c3d".to_string()
+                        } else {
+                            "✓".to_string()
+                        },
+                        metadata: {
+                            let mut map = HashMap::new();
+                            map.insert("branch".to_string(), "master".to_string());
+                            map.insert("status".to_string(), "Clean".to_string());
+                            map.insert("ahead".to_string(), "0".to_string());
+                            map.insert("behind".to_string(), "0".to_string());
+                            map
+                        },
+                    }
+                }
                 SegmentId::ContextWindow => SegmentData {
                     primary: "78.2% · 156.4k tokens".to_string(),
                     secondary: String::new(),
@@ -155,17 +166,28 @@ impl PreviewComponent {
                         map
                     },
                 },
-                SegmentId::Session => SegmentData {
-                    primary: "3m45s".to_string(),
-                    secondary: "\x1b[32m+156\x1b[0m \x1b[31m-23\x1b[0m".to_string(),
-                    metadata: {
-                        let mut map = HashMap::new();
-                        map.insert("duration_ms".to_string(), "225000".to_string());
-                        map.insert("lines_added".to_string(), "156".to_string());
-                        map.insert("lines_removed".to_string(), "23".to_string());
-                        map
-                    },
-                },
+                SegmentId::Session => {
+                    let show_name = segment_config
+                        .options
+                        .get("show_name")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(true);
+                    SegmentData {
+                        primary: if show_name {
+                            "demo · 3m45s".to_string()
+                        } else {
+                            "3m45s".to_string()
+                        },
+                        secondary: "\x1b[32m+156\x1b[0m \x1b[31m-23\x1b[0m".to_string(),
+                        metadata: {
+                            let mut map = HashMap::new();
+                            map.insert("duration_ms".to_string(), "225000".to_string());
+                            map.insert("lines_added".to_string(), "156".to_string());
+                            map.insert("lines_removed".to_string(), "23".to_string());
+                            map
+                        },
+                    }
+                }
                 SegmentId::OutputStyle => SegmentData {
                     primary: "default".to_string(),
                     secondary: "".to_string(),

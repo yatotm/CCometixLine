@@ -1,5 +1,5 @@
 use super::segment_list::{FieldSelection, Panel};
-use crate::config::{Config, SegmentId, StyleMode};
+use crate::config::{Config, SegmentConfig, SegmentId, StyleMode};
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
@@ -7,6 +7,117 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OptionKind {
+    Bool,
+    Uint,
+    String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OptionItem {
+    pub key: String,
+    pub value: serde_json::Value,
+    pub kind: OptionKind,
+}
+
+pub struct SettingsViewState<'a> {
+    pub selected_segment: usize,
+    pub selected_panel: &'a Panel,
+    pub selected_field: &'a FieldSelection,
+    pub options_expanded: bool,
+    pub editing_option: Option<&'a str>,
+}
+
+impl OptionItem {
+    fn bool(key: &str, value: bool) -> Self {
+        Self {
+            key: key.to_string(),
+            value: serde_json::Value::Bool(value),
+            kind: OptionKind::Bool,
+        }
+    }
+
+    fn uint(key: &str, value: u64) -> Self {
+        Self {
+            key: key.to_string(),
+            value: serde_json::Value::from(value),
+            kind: OptionKind::Uint,
+        }
+    }
+
+    fn string(key: &str, value: &str) -> Self {
+        Self {
+            key: key.to_string(),
+            value: serde_json::Value::String(value.to_string()),
+            kind: OptionKind::String,
+        }
+    }
+}
+
+fn default_options(id: SegmentId) -> Vec<OptionItem> {
+    let mut items = Vec::new();
+    match id {
+        SegmentId::Model => items.push(OptionItem::bool("show_effort", true)),
+        SegmentId::Git => items.push(OptionItem::bool("show_sha", false)),
+        SegmentId::ContextWindow => items.push(OptionItem::bool("dynamic_color", true)),
+        SegmentId::Session => items.push(OptionItem::bool("show_name", true)),
+        SegmentId::Usage => {
+            let url = "https://api.anthropic.com";
+            items.push(OptionItem::string("api_base_url", url));
+            items.push(OptionItem::uint("cache_duration", 300));
+            items.push(OptionItem::uint("timeout", 2));
+        }
+        _ => {}
+    }
+    items
+}
+
+/// Ordered configurable options for a segment: known defaults merged with any custom keys.
+pub fn effective_options(segment: &SegmentConfig) -> Vec<OptionItem> {
+    let mut items = default_options(segment.id);
+    for item in &mut items {
+        if let Some(val) = segment.options.get(&item.key) {
+            item.value = val.clone();
+        }
+    }
+
+    let mut extra_keys: Vec<&String> = segment
+        .options
+        .keys()
+        .filter(|k| !items.iter().any(|item| &item.key == *k))
+        .collect();
+    extra_keys.sort();
+
+    for key in extra_keys {
+        if let Some(value) = segment.options.get(key) {
+            let kind = if value.is_boolean() {
+                OptionKind::Bool
+            } else if value.is_u64() {
+                OptionKind::Uint
+            } else {
+                OptionKind::String
+            };
+            items.push(OptionItem {
+                key: key.clone(),
+                value: value.clone(),
+                kind,
+            });
+        }
+    }
+
+    items
+}
+
+pub fn format_option_raw(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Bool(b) => b.to_string(),
+        other => other.to_string(),
+    }
+}
 
 #[derive(Default)]
 pub struct SettingsComponent;
@@ -16,15 +127,10 @@ impl SettingsComponent {
         Self
     }
 
-    pub fn render(
-        &self,
-        f: &mut Frame,
-        area: Rect,
-        config: &Config,
-        selected_segment: usize,
-        selected_panel: &Panel,
-        selected_field: &FieldSelection,
-    ) {
+    pub fn render(&self, f: &mut Frame, area: Rect, config: &Config, state: &SettingsViewState) {
+        let selected_segment = state.selected_segment;
+        let selected_panel = state.selected_panel;
+        let selected_field = state.selected_field;
         if let Some(segment) = config.segments.get(selected_segment) {
             let segment_name = match segment.id {
                 SegmentId::Model => "Model",
@@ -209,7 +315,15 @@ impl SettingsComponent {
                 spans.extend(content);
                 Line::from(spans)
             };
-            let lines = vec![
+            let options = effective_options(segment);
+            let options_label = if options.is_empty() {
+                "└─ Options: None".to_string()
+            } else {
+                let arrow = if state.options_expanded { "▾" } else { "▸" };
+                format!("└─ Options ({}) [{}]", options.len(), arrow)
+            };
+
+            let mut lines = vec![
                 Line::from(format!("{} Segment", segment_name)),
                 create_field_line(
                     FieldSelection::Enabled,
@@ -267,14 +381,35 @@ impl SettingsComponent {
                         }
                     ))],
                 ),
-                create_field_line(
-                    FieldSelection::Options,
-                    vec![Span::raw(format!(
-                        "└─ Options: {} items",
-                        segment.options.len()
-                    ))],
-                ),
+                create_field_line(FieldSelection::Options, vec![Span::raw(options_label)]),
             ];
+
+            if state.options_expanded && !options.is_empty() {
+                let last_idx = options.len() - 1;
+                for (idx, item) in options.iter().enumerate() {
+                    let branch = if idx == last_idx {
+                        "    └─ "
+                    } else {
+                        "    ├─ "
+                    };
+                    let field = FieldSelection::OptionItem(idx);
+                    let is_editing = *selected_panel == Panel::Settings
+                        && *selected_field == field
+                        && state.editing_option.is_some();
+
+                    let value_span = if let (true, Some(buf)) = (is_editing, state.editing_option) {
+                        Span::styled(format!("{}█", buf), Style::default().fg(Color::Yellow))
+                    } else if item.kind == OptionKind::Bool {
+                        let enabled = item.value.as_bool().unwrap_or(false);
+                        Span::raw(if enabled { "[✓]" } else { "[ ]" })
+                    } else {
+                        Span::raw(format_option_raw(&item.value))
+                    };
+
+                    let key_span = Span::raw(format!("{}{}: ", branch, item.key));
+                    lines.push(create_field_line(field, vec![key_span, value_span]));
+                }
+            }
             let text = Text::from(lines);
             let settings_block = Block::default()
                 .borders(Borders::ALL)
@@ -298,5 +433,57 @@ impl SettingsComponent {
             let settings_panel = Paragraph::new("No segment selected").block(settings_block);
             f.render_widget(settings_panel, area);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::themes::ThemePresets;
+
+    #[test]
+    fn effective_options_supplies_defaults_for_legacy_empty_options() {
+        let config = ThemePresets::get_cometix();
+        let mut session = config
+            .segments
+            .iter()
+            .find(|s| s.id == SegmentId::Session)
+            .unwrap()
+            .clone();
+        session.options.clear();
+
+        let opts = effective_options(&session);
+        assert_eq!(opts.len(), 1);
+        assert_eq!(opts[0].key, "show_name");
+        assert_eq!(opts[0].kind, OptionKind::Bool);
+        assert_eq!(opts[0].value, serde_json::Value::Bool(true));
+
+        let dir = config
+            .segments
+            .iter()
+            .find(|s| s.id == SegmentId::Directory)
+            .unwrap();
+        assert!(effective_options(dir).is_empty());
+    }
+
+    #[test]
+    fn effective_options_preserves_usage_order_and_custom_keys() {
+        let config = ThemePresets::get_cometix();
+        let mut usage = config
+            .segments
+            .iter()
+            .find(|s| s.id == SegmentId::Usage)
+            .unwrap()
+            .clone();
+        let opts = &mut usage.options;
+        opts.insert("z_custom".to_string(), serde_json::Value::Bool(true));
+
+        let opts = effective_options(&usage);
+        let keys: Vec<&str> = opts.iter().map(|o| o.key.as_str()).collect();
+        assert_eq!(
+            keys,
+            vec!["api_base_url", "cache_duration", "timeout", "z_custom"]
+        );
+        assert_eq!(opts[1].value, serde_json::Value::from(180u64));
     }
 }

@@ -22,6 +22,7 @@ pub enum FieldSelection {
     BackgroundColor,
     TextStyle,
     Options,
+    OptionItem(usize),
 }
 
 #[derive(Default)]

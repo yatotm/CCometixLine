@@ -21,8 +21,11 @@ impl HelpComponent {
         status_message: Option<&str>,
         color_picker_open: bool,
         icon_selector_open: bool,
+        editing_option: bool,
     ) {
-        let help_items = if color_picker_open {
+        let help_items = if editing_option {
+            vec![("[Enter]", "Apply"), ("[Esc]", "Cancel")]
+        } else if color_picker_open {
             vec![
                 ("[↑↓]", "Navigate"),
                 ("[Tab]", "Mode"),
