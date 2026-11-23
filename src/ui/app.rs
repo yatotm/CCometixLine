@@ -438,7 +438,8 @@ impl App {
             options_expanded: self.options_expanded,
             editing_option: self.editing_option.as_deref(),
         };
-        self.settings.render(f, content_layout[1], &self.config, &settings_state);
+        self.settings
+            .render(f, content_layout[1], &self.config, &settings_state);
 
         // Help
         self.help.render(
